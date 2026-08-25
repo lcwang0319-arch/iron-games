@@ -1,5 +1,4 @@
 import streamlit as st
-import os
 
 # 1. 設置網頁
 st.set_page_config(page_title="Hearts of Streamlit IV: 中華民國崛起", page_icon="🇹🇼", layout="wide")
@@ -89,34 +88,34 @@ with st.sidebar:
     for buff in st.session_state.active_buffs:
         st.caption(buff)
 
-# 5. 主畫面分頁（將國際線圖片常駐於第二個 Tab）
-tab_map, tab_diplomacy = st.tabs(["🗺️ 全疆域戰略地圖", "🌍 國際外交與戰線"])
+# 5. 主畫面分頁（地圖圖片常駐，無表格）
+tab_map, tab_diplomacy = st.tabs(["🗺️ 全疆域戰略地圖 (Military Map)", "🌍 國際外交與戰線 (Diplomacy)"])
 
+# --- TAB 1: 戰略地圖（純圖版） ---
 with tab_map:
-    st.header("守軍與前線狀態")
-    map_data = {
-        "行省 / 地區": ["南京 (首都圈)", "廣東 (南方基地)", "平津防線 (抗日最前線)", "東北邊境 (關外)"],
-        "駐防精銳師團數": ["30 個機械化步兵師", "15 個常備師", "40 個德械師 (全裝)", "等待下達進攻命令的 50 個主力師"],
-        "戰備狀態": ["優良", "優良", "完美 (隨時可發動反攻)", "全面臨戰"]
-    }
-    st.table(map_data)
+    st.header("🎯 最高統帥部：疆域守軍臨戰態勢")
+    
+    # 常駐軍事地圖
+    map_url = "https://gamer.com.tw" # 秋海棠地圖源
+    st.image("https://bahamut.com.tw", 
+             caption="【常駐軍事態勢圖】德械精銳師與機械化部隊已在平津防線、沿海港口集結完畢。", 
+             use_container_width=True)
+    
+    st.subheader("⚔️ 前線總部戰報簡介")
+    st.info("💡 **南京首都圈、廣東基地、平津防線及關外邊境** 已佈防超過 95 個滿編主力師，戰備狀態完美，隨時可轉入全面戰略反攻！")
 
+# --- TAB 2: 國際外交與戰線（純圖版） ---
 with tab_diplomacy:
     st.header("🌍 遠東與全球國際戰線")
     
-    # 🖼️ 核心功能：圖片常駐！不論有沒有宣戰，這張國際大圖都會一直顯示
-    img_path = "world_war.png"
-    backup_url = "https://unsplash.com"
-    
-    if os.path.exists(img_path):
-        st.image(img_path, caption="【世界大戰局勢圖】遠東雄獅覺醒，重塑亞洲與世界新秩序！", use_container_width=True)
-    else:
-        st.image(backup_url, caption="【全球外交戰線圖】中華民國正式拒絕承認帝國主義不平等條約，大軍臨戰！", use_container_width=True)
+    # 常駐國際外交局勢圖
+    st.image("https://bahamut.com.tw", 
+             caption="【遠東國際外交戰線圖】列強勢力錯綜複雜，我方已全面重塑亞洲與世界新秩序！", 
+             use_container_width=True)
     
     st.markdown("---")
     st.subheader("📡 當前外交抉擇與局勢評估")
     
-    # 根據是否宣戰，動態顯示不同的外交狀態與說明
     if not st.session_state.war_declared:
         st.info("💡 歷史評估：我方已全面移除所有歷史枷鎖，百萬精銳德械師隨時可以採取攻勢。")
         if st.button("💥 拒絕對列強妥協：向軸心國與不平等條約宣戰！", type="primary", use_container_width=True):
@@ -126,7 +125,7 @@ with tab_diplomacy:
     else:
         st.error("⚔️ 【全面戰爭狀態】我方已對全球帝國主義宣戰！")
         st.markdown("""
-        *   **世界緊張度：** 已因我軍行動大幅飆升！
-        *   **前線回報：** 全軍組織度上升 **+15%**，後方工廠產能全開。
+        *   **世界緊張度：** 已因我軍爆發反攻行動大幅飆升！
+        *   **前線回報：** 移除陸軍腐敗與全 Buff 加成下，全軍組織度上升 **+15%**，後方工廠產能全開。
         *   **國際反應：** 西方列強與鄰國外交關係全面跌入冰點，戰火已無法避免。
         """)
