@@ -5,7 +5,7 @@ import os
 st.set_page_config(page_title="Hearts of Streamlit IV: 中華民國崛起", page_icon="🇹🇼", layout="wide")
 st.title("🇹🇼 Hearts of Streamlit IV: 中華民國（完全體天警開局）")
 
-# 2. 🛡️ 安全的防禦性初始化 (逐一檢查，絕對不會再報 AttributeError)
+# 2. 安全的防禦性初始化
 if "game_date" not in st.session_state:
     st.session_state.game_date = {"year": 1936, "month": 1, "day": 1}
 
@@ -30,15 +30,11 @@ if "civ_factories" not in st.session_state:
 if "mil_factories" not in st.session_state:
     st.session_state.mil_factories = 60     
 
-# ✨ 確保這三個新變數一定會被初始化
 if "world_tension" not in st.session_state:
     st.session_state.world_tension = 0  
 
 if "war_declared" not in st.session_state:
     st.session_state.war_declared = False 
-
-if "event_trigger" not in st.session_state:
-    st.session_state.event_trigger = False 
 
 if "active_buffs" not in st.session_state:
     st.session_state.active_buffs = [
@@ -84,7 +80,6 @@ with st.sidebar:
             
         st.rerun()
 
-    # 額外新增：重設遊戲按鈕（防止雲端快取死結）
     if st.button("🔄 重設全域數據", type="secondary", use_container_width=True):
         st.session_state.clear()
         st.rerun()
@@ -94,34 +89,8 @@ with st.sidebar:
     for buff in st.session_state.active_buffs:
         st.caption(buff)
 
-# 5. 核心重大外交事件（圖片彈窗區）
-if st.session_state.event_trigger:
-    st.error("🚨 【重大國際歷史事件：全面宣戰！】")
-    
-    img_path = "world_war.png"
-    backup_url = "https://unsplash.com"
-    
-    if os.path.exists(img_path):
-        st.image(img_path, caption="《泰晤士報》頭版：遠東雄獅覺醒，震驚歐美列強！", use_container_width=True)
-    else:
-        st.image(backup_url, caption="【國際戰線圖】中華民國正式拒絕承認帝國主義不平等條約，大軍開拔！", use_container_width=True)
-        
-    st.markdown("""
-    ### 🔔 號外！中華民國最高統帥部發表對全球宣戰佈告！
-    因應國際局勢波譎雲詭，我方已全面解除所有歷史枷鎖。
-    百萬精銳德械師、機械化部隊已在邊境集結完畢，目標：徹底收復所有失去的國土，重塑亞洲與世界新秩序！
-    
-    *   **世界緊張度 飆升 +45%**
-    *   **全軍組織度 上升 +15%**
-    *   **西方列強外交關係 跌入冰點**
-    """)
-    if st.button("知道了，不惜一切代價贏得勝利！ 🇹🇼"):
-        st.session_state.event_trigger = False
-        st.rerun()
-    st.markdown("---")
-
-# 6. 主畫面分頁
-tab_map, tab_diplomacy = st.tabs(["🗺️ 全疆域戰略地圖", "🌍 國際外交戰線"])
+# 5. 主畫面分頁（將國際線圖片常駐於第二個 Tab）
+tab_map, tab_diplomacy = st.tabs(["🗺️ 全疆域戰略地圖", "🌍 國際外交與戰線"])
 
 with tab_map:
     st.header("守軍與前線狀態")
@@ -133,14 +102,31 @@ with tab_map:
     st.table(map_data)
 
 with tab_diplomacy:
-    st.header("🌍 國際外交與宣戰抉擇")
-    st.write("目前世界各國正緊盯著你的每一步動作。")
+    st.header("🌍 遠東與全球國際戰線")
     
+    # 🖼️ 核心功能：圖片常駐！不論有沒有宣戰，這張國際大圖都會一直顯示
+    img_path = "world_war.png"
+    backup_url = "https://unsplash.com"
+    
+    if os.path.exists(img_path):
+        st.image(img_path, caption="【世界大戰局勢圖】遠東雄獅覺醒，重塑亞洲與世界新秩序！", use_container_width=True)
+    else:
+        st.image(backup_url, caption="【全球外交戰線圖】中華民國正式拒絕承認帝國主義不平等條約，大軍臨戰！", use_container_width=True)
+    
+    st.markdown("---")
+    st.subheader("📡 當前外交抉擇與局勢評估")
+    
+    # 根據是否宣戰，動態顯示不同的外交狀態與說明
     if not st.session_state.war_declared:
+        st.info("💡 歷史評估：我方已全面移除所有歷史枷鎖，百萬精銳德械師隨時可以採取攻勢。")
         if st.button("💥 拒絕對列強妥協：向軸心國與不平等條約宣戰！", type="primary", use_container_width=True):
             st.session_state.war_declared = True
-            st.session_state.event_trigger = True 
             st.session_state.world_tension = min(100, st.session_state.world_tension + 45)
             st.rerun()
     else:
-        st.success("⚔️ 目前正處於【大東亞與全球解放戰爭】狀態！")
+        st.error("⚔️ 【全面戰爭狀態】我方已對全球帝國主義宣戰！")
+        st.markdown("""
+        *   **世界緊張度：** 已因我軍行動大幅飆升！
+        *   **前線回報：** 全軍組織度上升 **+15%**，後方工廠產能全開。
+        *   **國際反應：** 西方列強與鄰國外交關係全面跌入冰點，戰火已無法避免。
+        """)
