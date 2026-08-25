@@ -5,24 +5,42 @@ import os
 st.set_page_config(page_title="Hearts of Streamlit IV: 中華民國崛起", page_icon="🇹🇼", layout="wide")
 st.title("🇹🇼 Hearts of Streamlit IV: 中華民國（完全體天警開局）")
 
-# 2. 初始化國家與世界局勢狀態
+# 2. 🛡️ 安全的防禦性初始化 (逐一檢查，絕對不會再報 AttributeError)
 if "game_date" not in st.session_state:
     st.session_state.game_date = {"year": 1936, "month": 1, "day": 1}
+
+if "country" not in st.session_state:
     st.session_state.country = "中華民國 (Republic of China)"
-    
-    # 核心資源 (全 Buff 狀態)
+
+if "political_power" not in st.session_state:
     st.session_state.political_power = 500  
+
+if "stability" not in st.session_state:
     st.session_state.stability = 100         
+
+if "war_support" not in st.session_state:
     st.session_state.war_support = 100       
+
+if "manpower" not in st.session_state:
     st.session_state.manpower = 50000000     
+
+if "civ_factories" not in st.session_state:
     st.session_state.civ_factories = 80     
+
+if "mil_factories" not in st.session_state:
     st.session_state.mil_factories = 60     
-    
-    # 🎮 新增：世界緊張度與戰爭事件狀態
-    st.session_state.world_tension = 0  # 世界緊張度 %
-    st.session_state.war_declared = False # 是否宣戰
-    st.session_state.event_trigger = False # 是否觸發事件彈窗
-    
+
+# ✨ 確保這三個新變數一定會被初始化
+if "world_tension" not in st.session_state:
+    st.session_state.world_tension = 0  
+
+if "war_declared" not in st.session_state:
+    st.session_state.war_declared = False 
+
+if "event_trigger" not in st.session_state:
+    st.session_state.event_trigger = False 
+
+if "active_buffs" not in st.session_state:
     st.session_state.active_buffs = [
         "✅ 移除【陸軍腐敗】：陸軍組織度 +20%",
         "✅ 移除【財政崩潰】：民用工廠建造速度 +30%",
@@ -30,7 +48,7 @@ if "game_date" not in st.session_state:
         "✅ 啟動【工業大躍進】：工廠產出 +25%"
     ]
 
-# 3. 頂部資源列 (HUD) + 世界緊張度
+# 3. 頂部資源列 (HUD)
 col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
 with col1:
     st.metric("📅 遊戲日期", f"{st.session_state.game_date['year']}-{st.session_state.game_date['month']:02d}-{st.session_state.game_date['day']:02d}")
@@ -45,7 +63,6 @@ with col5:
 with col6:
     st.metric("🏭 工廠", f"{st.session_state.civ_factories} / {st.session_state.mil_factories}")
 with col7:
-    # 鋼鐵雄心核心：火球圖示的世界緊張度
     st.metric("🔥 世界緊張度", f"{st.session_state.world_tension}%")
 
 st.markdown("---")
@@ -62,10 +79,14 @@ with st.sidebar:
                 st.session_state.game_date["month"] = 1
                 st.session_state.game_date["year"] += 1
         
-        # 隨著時間隨機增加一點世界緊張度
         if st.session_state.world_tension < 100:
-            st.session_state.world_tension += min(100, round(0.2, 1))
+            st.session_state.world_tension = min(100, st.session_state.world_tension + 1)
             
+        st.rerun()
+
+    # 額外新增：重設遊戲按鈕（防止雲端快取死結）
+    if st.button("🔄 重設全域數據", type="secondary", use_container_width=True):
+        st.session_state.clear()
         st.rerun()
 
     st.markdown("---")
@@ -75,12 +96,10 @@ with st.sidebar:
 
 # 5. 核心重大外交事件（圖片彈窗區）
 if st.session_state.event_trigger:
-    # 建立一個極具儀式感的鋼鐵雄心式大宣告框
     st.error("🚨 【重大國際歷史事件：全面宣戰！】")
     
-    # 🖼️ 核心：顯示圖片邏輯 (優先讀取本地圖片，若無則用網路備用圖片)
     img_path = "world_war.png"
-    backup_url = "https://unsplash.com" # 復古戰爭感底圖
+    backup_url = "https://unsplash.com"
     
     if os.path.exists(img_path):
         st.image(img_path, caption="《泰晤士報》頭版：遠東雄獅覺醒，震驚歐美列強！", use_container_width=True)
@@ -117,11 +136,10 @@ with tab_diplomacy:
     st.header("🌍 國際外交與宣戰抉擇")
     st.write("目前世界各國正緊盯著你的每一步動作。")
     
-    # 宣戰按鈕
     if not st.session_state.war_declared:
         if st.button("💥 拒絕對列強妥協：向軸心國與不平等條約宣戰！", type="primary", use_container_width=True):
             st.session_state.war_declared = True
-            st.session_state.event_trigger = True # 觸發上面的圖片與事件公告
+            st.session_state.event_trigger = True 
             st.session_state.world_tension = min(100, st.session_state.world_tension + 45)
             st.rerun()
     else:
