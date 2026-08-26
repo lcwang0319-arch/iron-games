@@ -59,19 +59,25 @@ if "total_turns" not in st.session_state:
 # 初始化 20x20 地圖版圖：帶入蘇聯開局 4 格優勢
 # 初始化 20x20 地圖版圖：帶入蘇聯開局 4 格優勢（修正後的正確二維陣列索引）
 # 初始化 20x20 地圖版圖：帶入蘇聯開局 4 格優勢（這一次是絕對正確的雙括號寫法！）
+# 初始化 20x20 地圖版圖（使用 NumPy 矩陣完全繞過網頁系統吞掉雙括號的 Bug）
 if "grid_map" not in st.session_state:
-    grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
-    grid[0][0] = "中華民國"                     # 左上角 [第 1 列, 第 1 行]
-    grid[0][MAP_SIZE-1] = "德意志國"             # 右上角 [第 1 列, 第 20 行]
-    grid[MAP_SIZE-1][0] = "大日本帝國"           # 左下角 [第 20 列, 第 1 行]
+    # 先建立一個 20x20 的中立字串矩陣
+    arr = np.full((MAP_SIZE, MAP_SIZE), "中立荒漠", dtype=object)
+    
+    # 使用逗號分隔座標 arr[列, 行]，這在 Python 裡等同於雙括號，但絕對不會被系統過濾！
+    arr[0, 0] = "中華民國"                     # 左上角
+    arr[0, MAP_SIZE-1] = "德意志國"             # 右上角
+    arr[MAP_SIZE-1, 0] = "大日本帝國"           # 左下角
     
     # 🔴 蘇聯專屬優勢：開局右下角 2x2 共 4 格土地！
-    grid[MAP_SIZE-2][MAP_SIZE-2] = "蘇聯"
-    grid[MAP_SIZE-2][MAP_SIZE-1] = "蘇聯"
-    grid[MAP_SIZE-1][MAP_SIZE-2] = "蘇聯"
-    grid[MAP_SIZE-1][MAP_SIZE-1] = "蘇聯"
+    arr[MAP_SIZE-2, MAP_SIZE-2] = "蘇聯"
+    arr[MAP_SIZE-2, MAP_SIZE-1] = "蘇聯"
+    arr[MAP_SIZE-1, MAP_SIZE-2] = "蘇聯"
+    arr[MAP_SIZE-1, MAP_SIZE-1] = "蘇聯"
     
-    st.session_state.grid_map = grid
+    # 將 NumPy 矩陣轉換回標準 List 儲存到 session_state
+    st.session_state.grid_map = arr.tolist()
+
 
 
     grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
