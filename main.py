@@ -57,7 +57,21 @@ if "total_turns" not in st.session_state:
     st.session_state.total_turns = 1
 
 # 初始化 20x20 地圖版圖：帶入蘇聯開局 4 格優勢
+# 初始化 20x20 地圖版圖：帶入蘇聯開局 4 格優勢（修正後的正確二維陣列索引）
 if "grid_map" not in st.session_state:
+    grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
+    grid[0][0] = "中華民國"                     # 左上角 [第1列, 第1行]
+    grid[0][MAP_SIZE-1] = "德意志國"             # 右上角 [第1列, 第20行]
+    grid[MAP_SIZE-1][0] = "大日本帝國"           # 左下角 [第20列, 第1行]
+    
+    # 🔴 蘇聯專屬優勢：開局右下角 2x2 共 4 格土地！
+    grid[MAP_SIZE-2][MAP_SIZE-2] = "蘇聯"
+    grid[MAP_SIZE-2][MAP_SIZE-1] = "蘇聯"
+    grid[MAP_SIZE-1][MAP_SIZE-2] = "蘇聯"
+    grid[MAP_SIZE-1][MAP_SIZE-1] = "蘇聯"
+    
+    st.session_state.grid_map = grid
+
     grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
     grid = "中華民國"                # 左上角
     grid[MAP_SIZE-1] = "德意志國"        # 右上角
