@@ -3,283 +3,337 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # 1. 設置網頁
-st.set_page_config(page_title="Hearts of Streamlit IV: 中華民國崛起", page_icon="🇹🇼", layout="wide")
-st.title("🇹🇼 Hearts of Streamlit IV: 中華民國（完全體天警開局 · 手繪風戰線版）")
+st.set_page_config(page_title="Hearts of Grid IV: 20x20巨型爭霸", page_icon="⚔️", layout="wide")
+st.title("⚔️ Hearts of Grid IV: 巨型歐亞方格爭霸（20×20 史詩大戰場）")
 
-# 2. 安全的防禦性初始化
-if "game_date" not in st.session_state:
-    st.session_state.game_date = {"year": 1936, "month": 1, "day": 1}
-if "country" not in st.session_state:
-    st.session_state.country = "中華民國 (Republic of China)"
-if "political_power" not in st.session_state:
-    st.session_state.political_power = 500  
-if "stability" not in st.session_state:
-    st.session_state.stability = 100         
-if "war_support" not in st.session_state:
-    st.session_state.war_support = 100       
-if "manpower" not in st.session_state:
-    st.session_state.manpower = 50000000     
-if "civ_factories" not in st.session_state:
-    st.session_state.civ_factories = 80     
-if "mil_factories" not in st.session_state:
-    st.session_state.mil_factories = 60     
-if "world_tension" not in st.session_state:
-    st.session_state.world_tension = 0  
-if "war_declared" not in st.session_state:
-    st.session_state.war_declared = False 
+# 2. 定義四個參戰國家的核心色彩與基礎數值
+COUNTRIES = ["中華民國", "德意志國", "大日本帝國", "蘇聯"]
+COLOR_MAP = {
+    "中華民國": "#003399",  # 藍色 🔵
+    "德意志國": "#222222",  # 黑色 ⚫
+    "大日本帝國": "#ff9999",  # 粉紅色 💗
+    "蘇聯": "#cc0000",      # 紅色 🔴
+    "中立荒漠": "#444444"    # 灰色 ⚪
+}
 
-# --- 提取手繪風格新增的戰術矩陣變數 ---
-if "combat_grid" not in st.session_state:
-    # 0 代表敵方/未爭奪（紅），1 代表我方攻克（藍）。初始有幾個隨機前線格子
-    st.session_state.combat_grid = np.zeros((5, 5), dtype=int)
-if "completed_focuses" not in st.session_state:
-    st.session_state.completed_focuses = []
+MAP_SIZE = 20  # 升級為 20x20 大地圖
+
+# 3. 系統初始化與選國階段
+if "game_started" not in st.session_state:
+    st.session_state.game_started = False
+if "player_names" not in st.session_state:
+    st.session_state.player_names = {c: f"玩家_{i+1}" for i, c in enumerate(COUNTRIES)}
+
+if not st.session_state.game_started:
+    st.header("🎮 歡迎進入 20×20 多人單機模式：請四位玩家分配國家")
+    st.markdown("戰場已擴張至 **400 格巨型矩陣**！請輸入每位玩家的名字，每人控制一個國家，從角落出發吞併天下！")
+    
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        p_roc = st.text_input("🔵 玩家 1 名字（控制：中華民國）", "玩家_1")
+        p_ger = st.text_input("⚫ 玩家 2 名字（控制：德意志國）", "玩家_2")
+    with col_p2:
+        p_jap = st.text_input("💗 玩家 3 名字（控制：大日本帝國）", "玩家_3")
+        p_ussr = st.text_input("🔴 玩家 4 名字（控制：蘇聯）", "玩家_4")
+        
+    if st.button("🚀 分配完畢，史詩大戰正式開打！", type="primary", use_container_width=True):
+        st.session_state.player_names["中華民國"] = p_roc
+        st.session_state.player_names["德意志國"] = p_ger
+        st.session_state.player_names["大日本帝國"] = p_jap
+        st.session_state.player_names["蘇聯"] = p_ussr
+        st.session_state.game_started = True
+        st.rerun()
+    st.stop()
+
+# 4. 遊戲核心數據防禦性初始化
+if "turn_index" not in st.session_state:
+    st.session_state.turn_index = 0  
+if "total_turns" not in st.session_state:
+    st.session_state.total_turns = 1
+
+# 初始化 20x20 地圖版圖：大家開局都只有角落的 1 格
+if "grid_map" not in st.session_state:
+    grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
+    grid[0][0] = "中華民國"                # 左上角 [1, 1]
+    grid[0][MAP_SIZE-1] = "德意志國"        # 右上角 [1, 20]
+    grid[MAP_SIZE-1][0] = "大日本帝國"      # 左下角 [20, 1]
+    grid[MAP_SIZE-1][MAP_SIZE-1] = "蘇聯"  # 右下角 [20, 20]
+    st.session_state.grid_map = grid
+
+# 初始化四個國家各自獨立的「國家數據」
+if "player_data" not in st.session_state:
+    p_data = {}
+    for c in COUNTRIES:
+        p_data[c] = {
+            "pp": 150,
+            "manpower": 8000000,
+            "civ_factories": 8,
+            "mil_factories": 5,
+            "tech": {"中正式步槍": "🔒 未研發", "博福斯山砲": "🔒 未研發", "中型戰車": "🔒 未研發"},
+            "allocation": {"步槍": 3, "火砲": 2, "戰車": 0},
+            "stockpile": {"步槍": 15000, "火砲": 300, "戰車": 0}
+        }
+    st.session_state.player_data = p_data
+
 if "battle_log" not in st.session_state:
-    st.session_state.battle_log = ["📋 1936年1月1日：軍事委員會已下達最高動員令，前線部隊進入臨戰狀態。"]
+    st.session_state.battle_log = ["📋 遊戲開始！20×20 歐亞大棋盤啟動，400格領地爭奪戰打響。"]
 
-if "active_buffs" not in st.session_state:
-    st.session_state.active_buffs = [
-        "✅ 移除【陸軍腐敗】：陸軍組織度 +20%",
-        "✅ 移除【財政崩潰】：民用工廠建造速度 +30%",
-        "✅ 啟動【四億同胞】：核心人力增長 +5.00%",
-        "✅ 啟動【工業大躍進】：工廠產出 +25%"
-    ]
+# 5. 判斷當前輪到哪位玩家與對應名字
+current_player = COUNTRIES[st.session_state.turn_index]
+current_user_name = st.session_state.player_names[current_player]
+player_stats = st.session_state.player_data[current_player]
 
-# 3. 頂部資源列 (HUD)
-col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+# 6. 頂部資源列 (HUD) - 即時動態切換顯示當前玩家的數據
+st.subheader(f"👑 目前回合：【{current_user_name}】正在操作 ➔ {current_player} (第 {st.session_state.total_turns} 大回合)")
+col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
-    st.metric("📅 遊戲日期", f"{st.session_state.game_date['year']}-{st.session_state.game_date['month']:02d}-{st.session_state.game_date['day']:02d}")
+    st.metric("👑 政治點數 (PP)", f"{player_stats['pp']}")
 with col2:
-    st.metric("👑 政治點數 (PP)", f"{st.session_state.political_power}")
+    st.metric("👥 可用人力", f"{player_stats['manpower']:,}")
 with col3:
-    st.metric("⚖️ 穩定度", f"{st.session_state.stability}%")
+    st.metric("🏭 工廠 (民/軍)", f"{player_stats['civ_factories']} / {player_stats['mil_factories']}")
 with col4:
-    st.metric("🔥 戰爭支持度", f"{st.session_state.war_support}%")
+    st.metric("🔫 步槍 / 🍏 火砲庫存", f"{player_stats['stockpile']['步槍']:,} / {player_stats['stockpile']['火砲']:,}")
 with col5:
-    st.metric("👥 可用人力", f"{st.session_state.manpower:,}")
-with col6:
-    st.metric("🏭 工廠 (民/軍)", f"{st.session_state.civ_factories} / {st.session_state.mil_factories}")
-with col7:
-    st.metric("🔥 世界緊張度", f"{st.session_state.world_tension}%")
+    st.metric("🚜 戰車庫存", f"{player_stats['stockpile']['戰車']:,} 輛")
 
 st.markdown("---")
 
-# 4. 側邊欄：控制台
+# 7. 側邊欄：回合結束與戰報
 with st.sidebar:
-    st.header("⏱️ 時間與戰略控制")
+    st.header("⏱️ 回合制戰略中心")
+    st.success(f"👉 請 🌟【{current_user_name}】🌟 進行本輪決策，確認完「科研、產線與下達指令」後，點擊結束回合。")
     
-    if st.button("▶️ 推進下一天 (Next Day)", use_container_width=True):
-        st.session_state.game_date["day"] += 1
-        if st.session_state.game_date["day"] > 30:
-            st.session_state.game_date["day"] = 1
-            st.session_state.game_date["month"] += 1
-            if st.session_state.game_date["month"] > 12:
-                st.session_state.game_date["month"] = 1
-                st.session_state.game_date["year"] += 1
+    if st.button("🏁 結束本回合 (End Turn)", type="primary", use_container_width=True):
+        # 結算當前玩家武器產出
+        if player_stats["tech"]["中正式步槍"] == "✅ 已解鎖":
+            player_stats["stockpile"]["步槍"] += player_stats["allocation"]["步槍"] * 800
+        if player_stats["tech"]["博福斯山砲"] == "✅ 已解鎖":
+            player_stats["stockpile"]["火砲"] += player_stats["allocation"]["火砲"] * 80
+        if player_stats["tech"]["中型戰車"] == "✅ 已解鎖":
+            player_stats["stockpile"]["戰車"] += player_stats["allocation"]["戰車"] * 15
+            
+        # 20x20 大地圖每回合被動發放更多 PP (大圖發展更流暢)
+        player_stats["pp"] += 60
         
-        # 每日增長 PP
-        st.session_state.political_power += 2
-        
-        # 緊張度隨歷史推進增長
-        if st.session_state.world_tension < 100:
-            st.session_state.world_tension = min(100, st.session_state.world_tension + 1)
-            
-        # ⚔️ 模擬手繪風格的「前線微觀方格爭奪」
-        if st.session_state.war_declared and np.sum(st.session_state.combat_grid) < 25:
-            # 計算成功率：有軍事國策加成會大幅提高
-            success_rate = 0.5 if "漢陽兵工廠產能全開" in st.session_state.completed_focuses else 0.25
-            
-            if np.random.rand() < success_rate:
-                # 隨機找一個還是 0 (敵方) 的格子染成 1 (我方)
-                zero_indices = np.argwhere(st.session_state.combat_grid == 0)
-                if len(zero_indices) > 0:
-                    chosen_idx = zero_indices[np.random.choice(len(zero_indices))]
-                    st.session_state.combat_grid[chosen_idx[0], chosen_idx[1]] = 1
-                    st.session_state.battle_log.insert(0, f"💥 捷報！我軍成功突破前線方格座標 [{chosen_idx[0]+1}, {chosen_idx[1]+1}]！")
-            else:
-                st.session_state.battle_log.insert(0, f"⏳ 前線拉鋸中：我軍德械師正與敵方在方格防線激烈交火...")
-            
-            # 戰時人力損耗
-            st.session_state.manpower = max(0, st.session_state.manpower - int(np.random.randint(10000, 35000)))
+        # 輪流切換到下一個玩家
+        st.session_state.turn_index += 1
+        if st.session_state.turn_index >= 4:
+            st.session_state.turn_index = 0
+            st.session_state.total_turns += 1
             
         st.rerun()
 
-    if st.button("🔄 重設全域數據", type="secondary", use_container_width=True):
+    if st.button("🔄 重新整場遊戲（返回選國）", type="secondary", use_container_width=True):
         st.session_state.clear()
         st.rerun()
 
     st.markdown("---")
-    st.header("🔰 當前國家精神")
-    for buff in st.session_state.active_buffs:
-        st.caption(buff)
+    st.subheader("📜 歐亞戰線實時日誌")
+    for log in st.session_state.battle_log[:10]:
+        st.caption(log)
 
-# 5. 主畫面分頁 (新增國策樹分頁)
-tab_map, tab_focus, tab_diplomacy = st.tabs([
-    "🗺️ 秋海棠疆域最高統帥部 (Military Map)", 
-    "🌳 國家復興國策樹 (Focus Tree)", 
-    "🌍 國際外交與前線戰報 (Diplomacy)"
+# 8. 主畫面分頁
+tab_map, tab_tech, tab_action = st.tabs([
+    "🗺️ 20×20 史詩多國版圖 (Tactical Board)", 
+    "🔬 專屬軍備科研與產線 (Research & Production)", 
+    "🎯 戰略專攻與大擴張戰令 (Military Orders)"
 ])
 
-# --- TAB 1: 戰略地圖（保留宏觀歷史地圖，下方加入微觀手繪風方格戰線） ---
+# --- TAB 1: 20×20 多國色塊版圖（完美體現你手繪的方格風格與指定色彩） ---
 with tab_map:
-    st.header("🎯 最高統帥部戰略地圖")
+    st.header("🗺️ 20×20 巨型微觀防區爭奪圖 (共400格)")
+    st.caption(f"🔵 中華民國 ({st.session_state.player_names['中華民國']}) | ⚫ 德意志國 ({st.session_state.player_names['德意志國']}) | 💗 大日本帝國 ({st.session_state.player_names['大日本帝國']}) | 🔴 蘇聯 ({st.session_state.player_names['蘇聯']}) | ⚪ 中立荒漠")
     
-    # 宏觀秋海棠歷史地圖（原本的 Matplotlib 渲染）
-    fig, ax = plt.subplots(figsize=(10, 5), facecolor='#1e1e1e')
+    # 20x20 圖形較大，拉高畫布尺寸避免擠壓
+    fig, ax = plt.subplots(figsize=(10, 10), facecolor='#1e1e1e')
     ax.set_facecolor('#111111')
-    t = np.linspace(0, 2*np.pi, 100)
-    x = 12 * np.cos(t) + 3 * np.sin(2*t) + 100
-    y = 8 * np.sin(t) + 2 * np.cos(3*t) + 35
-    ax.fill(x, y, color='#003399', alpha=0.6, label='ROC Core Territory (秋海棠疆域)')
     
-    defense_x = [118, 116, 113, 123]
-    defense_y = [32, 39, 23, 41]
-    defense_names = ['Nanjing', 'Pingjin', 'Guangdong', 'Guanwai']
-    ax.scatter(defense_x, defense_y, color='#ff0000', s=120, zorder=5, label='精銳德械師駐防要塞')
-    for i, txt in enumerate(defense_names):
-        ax.annotate(txt, (defense_x[i]+0.5, defense_y[i]+0.5), color='white', fontsize=11, weight='bold')
-
-    if st.session_state.war_declared:
-        ax.arrow(116, 39, 5, 5, head_width=1.5, head_length=2, fc='#ff3333', ec='#ff3333', label='戰線全線反攻推進中')
-        ax.arrow(123, 41, 4, -2, head_width=1.5, head_length=2, fc='#ff3333', ec='#ff3333')
-    
-    ax.set_title("Republic of China - Theater Strategy Map", color='white', fontsize=14, weight='bold')
-    ax.grid(True, color='#333333', linestyle='--')
-    ax.tick_params(colors='white')
-    ax.legend(loc='lower left', facecolor='#222222', edgecolor='white', labelcolor='white')
+    # 渲染 20x20 方格
+    for row in range(MAP_SIZE):
+        for col in range(MAP_SIZE):
+            owner = st.session_state.grid_map[row][col]
+            color = COLOR_MAP[owner]
+            
+            # 繪製格子，格子縮小間距更細緻
+            rect = plt.Rectangle((col, MAP_SIZE - 1 - row), 1, 1, linewidth=0.5, edgecolor='#222222', facecolor=color, alpha=0.9)
+            ax.add_patch(rect)
+            
+            # 因為格子有 400 格，只有當非中立或者是極端角落時才顯示簡稱，避免畫面文字爆炸
+            if owner != "中立荒漠":
+                ax.text(col+0.5, MAP_SIZE - 1 - row + 0.5, owner[:2], 
+                         color='white', ha='center', va='center', fontsize=7, weight='bold')
+            elif (row % 4 == 0 and col % 4 == 0): # 中立荒漠每隔 4 格淡淡標註一次座標
+                ax.text(col+0.5, MAP_SIZE - 1 - row + 0.5, f"{row+1},{col+1}", 
+                         color='#ffffff', ha='center', va='center', fontsize=6, alpha=0.2)
+            
+    ax.set_xlim(0, MAP_SIZE)
+    ax.set_ylim(0, MAP_SIZE)
+    ax.set_xticks(range(MAP_SIZE + 1))
+    ax.set_yticks(range(MAP_SIZE + 1))
+    ax.grid(True, color='#222222', linestyle='-', linewidth=0.5)
+    ax.tick_params(colors='white', labelsize=8)
     st.pyplot(fig)
-    plt.close(fig) # 防記憶體洩漏
+    plt.close(fig)
+    
+    # 計算各國目前的總領土格子數
+    st.subheader("📊 戰界領土割據統計 (400格)")
+    counts = {"中華民國": 0, "德意志國": 0, "大日本帝國": 0, "蘇聯": 0, "中立荒漠": 0}
+    for r in range(MAP_SIZE):
+        for c in range(MAP_SIZE):
+            counts[st.session_state.grid_map[r][c]] += 1
+            
+    mc1, mc2, mc3, mc4 = st.columns(4)
+    mc1.metric(f"🔵 中華民國 ({st.session_state.player_names['中華民國']})", f"{counts['中華民國']} / 400 格")
+    mc2.metric(f"⚫ 德意志國 ({st.session_state.player_names['德意志國']})", f"{counts['德意志國']} / 400 格")
+    mc3.metric(f"💗 大日本帝國 ({st.session_state.player_names['大日本帝國']})", f"{counts['大日本帝國']} / 400 格")
+    mc4.metric(f"🔴 蘇聯 ({st.session_state.player_names['蘇聯']})", f"{counts['蘇聯']} / 400 格")
+
+# --- TAB 2: 科研與產線管理 ---
+with tab_tech:
+    st.header(f"🔬 【{current_user_name}】的 {current_player} 軍工科學院")
+    
+    st.subheader("💡 獨立軍備科研（解鎖量產資格）")
+    tc1, tc2, tc3 = st.columns(3)
+    
+    with tc1:
+        st.markdown("##### 🔫 輕武器研發")
+        rifle_status = player_stats["tech"]["中正式步槍"]
+        st.write(f"狀態: **{rifle_status}**")
+        if rifle_status == "🔒 未研發" and player_stats["pp"] >= 50:
+            if st.button("🧪 消耗 50 PP 研發【中正式步槍】"):
+                player_stats["pp"] -= 50
+                player_stats["tech"]["中正式步槍"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖步槍量產產線。")
+                st.rerun()
+                
+    with tc2:
+        st.markdown("##### 🍏 重火砲研發")
+        art_status = player_stats["tech"]["博福斯山砲"]
+        st.write(f"狀態: **{art_status}**")
+        if art_status == "🔒 未研發" and player_stats["pp"] >= 100:
+            if st.button("🧪 消耗 100 PP 研發【博福斯山砲】"):
+                player_stats["pp"] -= 100
+                player_stats["tech"]["博福斯山砲"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖火砲量產產線。")
+                st.rerun()
+                
+    with tc3:
+        st.markdown("##### 🚜 裝甲戰車研發")
+        tank_status = player_stats["tech"]["中型戰車"]
+        st.write(f"狀態: **{tank_status}**")
+        if tank_status == "🔒 未研發" and player_stats["pp"] >= 150:
+            if st.button("🧪 消耗 150 PP 研發【中型戰車】"):
+                player_stats["pp"] -= 150
+                player_stats["tech"]["中型戰車"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖戰車裝甲產線。")
+                st.rerun()
 
     st.markdown("---")
+    st.subheader("🏭 本輪軍用工廠產線分配")
+    st.caption(f"你目前擁有 {player_stats['mil_factories']} 座軍工廠。請調配本回合產出的武器類別：")
     
-    # 🪓 全新加入：引進手繪風格的「前線微觀戰術方格窗」
-    st.subheader("🎨 前線戰術方格動態窗 (Micro Combat Grid)")
-    st.caption("以下矩陣代表戰區前線的微觀推進。藍色方格代表我軍已攻克的防區，紅色虛線方格代表敵軍死守的陣地（靈感源自手繪軍事防區設定）。")
+    alloc_rifle = st.number_input("步槍工廠數", 0, player_stats['mil_factories'], player_stats['allocation']['步槍'], key="ar")
+    alloc_art = st.number_input("火砲工廠數", 0, player_stats['mil_factories'] - alloc_rifle, player_stats['allocation']['火砲'], key="aa")
+    alloc_tank = st.number_input("戰車工廠數", 0, player_stats['mil_factories'] - alloc_rifle - alloc_art, player_stats['allocation']['戰車'], key="at")
     
-    fig_grid, ax_grid = plt.subplots(figsize=(6, 5), facecolor='#1e1e1e')
-    ax_grid.set_facecolor('#111111')
-    
-    # 畫出 5x5 的矩陣格子
-    for row in range(5):
-        for col in range(5):
-            is_captured = st.session_state.combat_grid[row, col] == 1
-            color = '#00aaff' if is_captured else '#ff3333'
-            style = '-' if is_captured else '--'
-            alpha = 0.7 if is_captured else 0.2
-            
-            rect = plt.Rectangle((col, 4-row), 1, 1, linewidth=2, edgecolor=color, facecolor=color, alpha=alpha, linestyle=style)
-            ax_grid.add_patch(rect)
-            
-            # 格子內座標文字
-            ax_grid.text(col+0.5, 4-row+0.5, f"{row+1},{col+1}", color='white', ha='center', va='center', fontsize=9, alpha=0.6)
-            
-    ax_grid.set_xlim(0, 5)
-    ax_grid.set_ylim(0, 5)
-    ax_grid.axis('off')
-    ax_grid.set_title("Tactical Sector Breakdown - Frontline Control", color='white', fontsize=12, weight='bold')
-    
-    col_map1, col_map2 = st.columns([2, 1])
-    with col_map1:
-        st.pyplot(fig_grid)
-        plt.close(fig_grid)
-    with col_map2:
-        captured_grid_count = np.sum(st.session_state.combat_grid)
-        st.metric("🎯 已收復前線方格", f"{captured_grid_count} / 25")
-        grid_pct = (captured_grid_count / 25.0)
-        st.progress(grid_pct, text=f"戰區總淨化度: {int(grid_pct*100)}%")
+    if st.button("⚙️ 儲存本輪產線配置"):
+        player_stats['allocation']['步槍'] = alloc_rifle
+        player_stats['allocation']['火砲'] = alloc_art
+        player_stats['allocation']['戰車'] = alloc_tank
+        st.success("產線配置更新！")
+        st.rerun()
 
-# --- TAB 2: 中華民國專屬國策樹（全新功能連動！） ---
-with tab_focus:
-    st.header("🌳 國家復興精神：中央國策樹系統")
-    st.caption("消耗政治點數（PP）來點選國策，解鎖強大 Buff 並顯著提升前線方格的奪取機率。")
+# --- TAB 3: 戰略專攻與大擴張（新增集團軍閃擊拓荒） ---
+with tab_action:
+    st.header(f"🎯 【{current_user_name}】的最高統帥戰令")
+    st.caption("20×20 大地圖模式下，你可以自由選擇精準突擊特定格子，或者使用集團軍大面積往特定方向擴張中立區！")
     
-    col_tree1, col_tree2 = st.columns(2)
-    
-    with col_tree1:
-        st.subheader("⚔️ 軍事工業線")
-        if "漢陽兵工廠產能全開" not in st.session_state.completed_focuses:
-            if st.button("📌 推進國策：【漢陽兵工廠產能全開】(花費 150 PP)", use_container_width=True):
-                if st.session_state.political_power >= 150:
-                    st.session_state.political_power -= 150
-                    st.session_state.completed_focuses.append("漢陽兵工廠產能全開")
-                    st.session_state.mil_factories += 25
-                    st.session_state.active_buffs.append("🔥 漢陽火砲：前線微觀方格突破成功率大幅翻倍！")
-                    st.success("國策完成！軍工廠 +25，前線推格子的判定機率大增！")
+    ac1, ac2 = st.columns(2)
+    with ac1:
+        st.subheader("🛠️ 選項一：精準指定方格突擊（適合與敵軍正面交火）")
+        target_row = st.number_input("目標橫列座標 (Row 1-20)", 1, 20, 1)
+        target_col = st.number_input("目標縱行座標 (Col 1-20)", 1, 20, 1)
+        
+        # 轉換為 0-indexed 陣列索引
+        r_idx = target_row - 1
+        c_idx = target_col - 1
+        current_owner = st.session_state.grid_map[r_idx][c_idx]
+        st.write(f"🔍 目標座標 `[{target_row}, {target_col}]` 控制者：**{current_owner}**" + (f" ({st.session_state.player_names[current_owner]})" if current_owner != "中立荒漠" else ""))
+        
+        if st.button("⚔️ 下達精準點對點突擊！", type="primary", use_container_width=True):
+            if current_owner == current_player:
+                st.error("❌ 這是你自己的領土！請選擇其他格子擴張或進攻！")
+            elif current_owner == "中立荒漠":
+                st.session_state.grid_map[r_idx][c_idx] = current_player
+                st.session_state.battle_log.insert(0, f"🚩 精準擴張：【{current_user_name}({current_player})】佔領了中立方格 [{target_row}, {target_col}]！")
+                player_stats["civ_factories"] += 1
+                st.rerun()
+            else:
+                # 敵對玩家格子對撞機制
+                enemy_name = st.session_state.player_names[current_owner]
+                r_bonus = 30 if player_stats["stockpile"]["步槍"] > 5000 else 0
+                a_bonus = 45 if player_stats["stockpile"]["火砲"] > 300 else 0
+                t_bonus = 70 if player_stats["stockpile"]["戰車"] > 20 else 0
+                attack_power = 50 + r_bonus + a_bonus + t_bonus + np.random.randint(-15, 15)
+                
+                enemy_stats = st.session_state.player_data[current_owner]
+                enemy_r_bonus = 30 if enemy_stats["stockpile"]["步槍"] > 5000 else 0
+                defense_power = 60 + enemy_r_bonus + np.random.randint(-10, 10)
+                
+                # 扣除雙方軍火與人力損耗
+                player_stats["stockpile"]["步槍"] = max(0, player_stats["stockpile"]["步槍"] - 2500)
+                enemy_stats["stockpile"]["步槍"] = max(0, enemy_stats["stockpile"]["步槍"] - 1800)
+                player_stats["manpower"] = max(0, player_stats["manpower"] - np.random.randint(60000, 150000))
+                enemy_stats["manpower"] = max(0, enemy_stats["manpower"] - np.random.randint(40000, 120000))
+                
+                # 判定勝負與改染地圖色塊
+                if attack_power > defense_power:
+                    st.session_state.grid_map[r_idx][c_idx] = current_player
+                    st.session_state.battle_log.insert(0, f"💥 捷報！【{current_user_name}({current_player})】突擊成功，強奪了【{enemy_name}({current_owner})】的要塞格子 [{target_row}, {target_col}]！")
+                else:
+                    st.session_state.battle_log.insert(0, f"🛡️ 戰敗：【{current_user_name}({current_player})】對 [{target_row}, {target_col}] 的精準強攻被【{enemy_name}】死守擊退！")
+                st.rerun()
+
+    with ac2:
+        st.subheader("⚡ 選項二：集團軍大範圍盲擴張（專為 20×20 大圖設計！）")
+        st.markdown("由於地圖高達 **400 格**，你可以花費 **40 點政治點數 (PP)** 啟動集團軍突擊，系統會自動在全圖尋找中立灰色荒漠，並**瞬間連續橫掃強佔 1 ~ 5 個格子**，極速擴張後方基地與產線！")
+        
+        if st.button("🚀 啟動集團軍：閃擊大範圍拓荒！", use_container_width=True):
+            if player_stats["pp"] >= 40:
+                player_stats["pp"] -= 40
+                
+                # 在 20x20 地圖中尋找所有中立格子
+                neutral_coords = []
+                for r in range(MAP_SIZE):
+                    for c in range(MAP_SIZE):
+                        if st.session_state.grid_map[r][c] == "中立荒漠":
+                            neutral_coords.append((r, c))
+                
+                if neutral_coords:
+                    # 隨機吞併 1~5 格中立土地
+                    conquest_count = min(len(neutral_coords), np.random.randint(1, 6))
+                    chosen_spots = [neutral_coords[i] for i in np.random.choice(len(neutral_coords), conquest_count, replace=False)]
+                    
+                    for r, c in chosen_spots:
+                        st.session_state.grid_map[r][c] = current_player
+                    
+                    # 獎勵民用工廠（每一格搶到的中立土地都提供1座民工廠產能）
+                    player_stats["civ_factories"] += conquest_count
+                    # 拓荒隨機挖到前朝軍火庫，加碼補給步槍庫存
+                    player_stats["stockpile"]["步槍"] += conquest_count * 500
+                    
+                    st.session_state.battle_log.insert(0, f"⚡ 閃擊戰：【{current_user_name}({current_player})】集團軍發動大開拓，一口氣橫掃吞併了 {conquest_count} 格中立荒漠，民工廠 +{conquest_count}！")
                     st.rerun()
-                else: st.error("❌ 政治點數不足！")
-        else:
-            st.button("✅ 【漢陽兵工廠產能全開】(已完成)", disabled=True, use_container_width=True)
-
-    with col_tree2:
-        st.subheader("🏗️ 後方經濟線")
-        if "國防重工業現代化" not in st.session_state.completed_focuses:
-            if st.button("📌 推進國策：【重工業基地建設】(花費 120 PP)", use_container_width=True):
-                if st.session_state.political_power >= 120:
-                    st.session_state.political_power -= 120
-                    st.session_state.completed_focuses.append("國防重工業現代化")
-                    st.session_state.civ_factories += 35
-                    st.session_state.stability = min(100, st.session_state.stability + 10)
-                    st.session_state.active_buffs.append("⚡ 工業奇蹟：每日政治點數產出效率提升")
-                    st.success("國策完成！民用工廠 +35，後方經濟基礎穩固！")
-                    st.rerun()
-                else: st.error("❌ 政治點數不足！")
-        else:
-            st.button("✅ 【重工業基地建設】(已完成)", disabled=True, use_container_width=True)
-
-# --- TAB 3: 國際外交與雷達局勢圖 ---
-with tab_diplomacy:
-    st.header("🌍 遠東與全球國際外交戰線")
-    
-    # 國際關係雷達圖（融入國策完成度）
-    labels = np.array(['Stability', 'War Support', 'Industry', 'Manpower', 'Focus Trait'])
-    focus_score = len(st.session_state.completed_focuses) * 50 + 10
-    stats = np.array([st.session_state.stability, st.session_state.war_support, 85, 95, min(100, focus_score)])
-    
-    angles = np.linspace(0, 2*np.pi, len(labels), endpoint=False).tolist()
-    # 2. 雷達圖角度與數據首尾閉合處理（修復受手繪啟發的雷達數據閉合）
-    angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-    
-    # 將數據陣列與角度陣列都複製首個元素到尾端，確保雷達圖 360 度完全閉合
-    stats_closed = np.concatenate((stats, [stats[0]]))
-    angles_closed = angles + [angles[0]]
-    
-    # 3. 開始繪製雷達圖
-    fig_radar, ax_radar = plt.subplots(figsize=(5, 5), subplot_kw=dict(polar=True), facecolor='#1e1e1e')
-    ax_radar.set_facecolor('#111111')
-    
-    # 填滿與繪製雷達圖折線
-    ax_radar.fill(angles_closed, stats_closed, color='#ffcc00', alpha=0.4, label='中華民國實力雷達')
-    ax_radar.plot(angles_closed, stats_closed, color='#ffcc00', linewidth=2)
-    
-    # 設置雷達圖五角座標標籤與網格線
-    ax_radar.set_thetagrids(np.degrees(angles), labels, color='white', fontsize=12, weight='bold')
-    ax_radar.set_rgrids([20, 40, 60, 80, 100], labels=[], color='#444444')
-    ax_radar.tick_params(colors='white')
-    ax_radar.set_title("Global Geopolitical Influence Radar", color='white', fontsize=14, weight='bold', pad=20)
-    
-    # 渲染雷達圖並關閉畫布（防止記憶體洩漏）
-    st.pyplot(fig_radar)
-    plt.close(fig_radar) 
-    
-    st.markdown("---")
-    st.subheader("📡 前線戰略抉擇與即時戰報")
-    
-    if not st.session_state.war_declared:
-        st.info("💡 歷史評估：我方已全面移除所有歷史枷鎖，隨時可以拒絕承認列強不平等條約。")
-        if st.button("💥 拒絕對列強妥協：向軸心國與不平等條約宣戰！", type="primary", use_container_width=True):
-            st.session_state.war_declared = True
-            st.session_state.world_tension = min(100, st.session_state.world_tension + 45)
-            st.rerun()
-    else:
-        total_captured = np.sum(st.session_state.combat_grid)
-        if total_captured < 25:
-            st.error("⚔️ 【全面戰爭狀態】我方已對全球帝國主義宣戰！")
-            st.warning("⏳ 戰略指令：請回到【最高統帥部】查看手繪風方格戰區。點擊側邊欄的「▶️ 推進下一天」可以模擬每日強攻並蠶食敵方格子的過程！")
-        else:
-            st.balloons()
-            st.success("🏆 【全戰區大勝利】前線 25 個戰術方格已被我軍精銳德械師全部收復、悉數染藍！")
-            
-        # 顯示即時戰報日誌
-        st.markdown("### 📜 戰區前線實時電報")
-        for log in st.session_state.battle_log[:6]: # 僅顯示最新 6 條
-            st.write(log)
+                else:
+                    st.error("❌ 全地圖中立荒漠已被瓜分完畢，無法再使用大範圍盲擴張！請改用選項一精準突擊對手領土！")
+            else:
+                st.error("❌ 政治點數不足 40 PP，無法發動集團軍大規模盲擴裝！")
+                
+        st.markdown("---")
+        st.info("""
+        **💡 20×20 史詩回合制大戰策略：**
+        1. **前期（第 1 ~ 15 回合）**：全場 400 格大片都是灰色。請每位玩家在自己的回合瘋狂點選右邊的 **【選項二：集團軍閃擊盲擴張】**。一次可以搶到 1~5 格，迅速把民用工廠和基礎步槍庫存堆起來！
+        2. **中期（科研與整軍）**：利用搶地盤帶來的巨額民用工廠優勢，在【軍工科學院】瘋狂點步槍、大砲和坦克科研，將產線拉滿，儲備戰爭物資。
+        3. **後期（方格吞併大決戰）**：當四個人的色塊在 20×20 大棋盤中間全面撞車時，轉用 **【選項一：精準指定座標突擊】**，直接輸入對方的座標格子，用你的坦克大砲強行把敵人的領土染成你的顏色！
+        """)
