@@ -326,30 +326,90 @@ with tab_action:
     st.header(f"🎯 【{current_user_name}】的最高統帥部與外交戰令")
     
     ac1, ac2 = st.columns(2)
-    with ac1:
-        st.subheader("🛠️ 選項一：精準指定方格突擊（可無限次連續使用！）")
+            st.subheader("🛠️ 選項一：精準指定方格突擊（每回合限 1 次）")
+        
+        # 動態防禦性初始化當前玩家的「本輪已進攻狀態」
+        attack_flag_key = f"attack_used_{st.session_state.total_turns}_{st.session_state.turn_index}"
+        if attack_flag_key not in st.session_state:
+            st.session_state[attack_flag_key] = False
+            
         target_row = st.number_input("目標橫列座標 (Row 1-20)", 1, 20, 1, key="tgt_row")
         target_col = st.number_input("目標縱行座標 (Col 1-20)", 1, 20, 1, key="tgt_col")
         
+        # 轉換為 0-indexed 索引
         r_idx = target_row - 1
         c_idx = target_col - 1
+        
+        # 安全讀取當前控制者
         current_owner = st.session_state.grid_map[r_idx][c_idx]
         st.write(f"🔍 目標座標 `[{target_row}, {target_col}]` 控制者：**{current_owner}**")
         
-        if st.button("⚔️ 下達精準點對點突擊！（不限次數）", type="primary", use_container_width=True):
+        # 依據本回合是否已經進攻過，來決定按鈕是否禁用
+        is_disabled = st.session_state[attack_flag_key]
+        
+        if is_disabled:
+            st.warning("⚠️ 本回合你已經下達過精準突擊或擴張指令了！請完成其他內政或點擊「結束本回合」換下一位玩家。")
+            
+        if st.button("⚔️ 下達精準點對點突擊！", type="primary", use_container_width=True, disabled=is_disabled):
             if current_owner == current_player:
                 st.error("❌ 這是你自己的領土！請選擇其他敵方或中立格子進攻！")
             elif current_owner in ["法西斯蘇聯", "民主蘇聯", "君主蘇聯"]:
                 st.error("🔒 軍閥限制：該方格為內戰軍閥盤踞地，部隊目前因戰略混亂無法越界進攻這些NPC分裂勢力！")
             elif current_owner == "中立荒漠":
-                # 🟢 NumPy 轉置法安全修改地圖，100% 繞過雙括號 Bug 🟢
+                # NumPy 安全修改地圖
                 temp_arr = np.array(st.session_state.grid_map)
                 temp_arr[r_idx, c_idx] = current_player
                 st.session_state.grid_map = temp_arr.tolist()
                 
                 player_stats["civ_factories"] += 1
-                st.session_state.battle_log.insert(0, f"🚩 精準擴張：【{current_user_name}({current_player})】開拓佔領了中立方格 [{target_row}, {target_col}]！(可繼續下達進攻)")
+                st.session_state.battle_log.insert(0, f"🚩 精準擴張：【{current_user_name}({current_player})】開拓佔領了中立方格 [{target_row}, {target_col}]！")
+                
+                # 標記本回合已使用精準突擊
+                st.session_state[attack_flag_key] = True
                 st.rerun()
+            else:
+                # 🛑 100 仇恨值宣戰權限判定
+                current_animosity = player_stats["animosity"][current_owner]
+                if current_animosity < 100:
+                    st.error(f"🔒 外交限制：你對【{current_owner}】的仇恨值目前僅為 {current_animosity} / 100！在仇恨破百正式宣戰前，部隊無法越界搶奪格子！請先至右側製造外交爭端！")
+                else:
+                    # 進入對撞流程
+                    enemy_name = st.session_state.player_names[current_owner]
+                    enemy_stats = st.session_state.player_data[current_owner]
+                    
+                    # 計算我軍與敵軍實時攻防加成
+                    r_bonus = 35 if player_stats["stockpile"]["步槍"] > 5000 else -15
+                    a_bonus = 50 if player_stats["stockpile"]["火砲"] > 300 else 0
+                    t_bonus = 80 if player_stats["stockpile"]["戰車"] > 20 else 0
+                    attack_power = 50 + r_bonus + a_bonus + t_bonus + np.random.randint(-15, 15)
+                    
+                    enemy_r_bonus = 35 if enemy_stats["stockpile"]["步槍"] > 5000 else -15
+                    enemy_a_bonus = 40 if enemy_stats["stockpile"]["火砲"] > 200 else 0
+                    defense_power = 60 + enemy_r_bonus + enemy_a_bonus + np.random.randint(-10, 10)
+                    
+                    # 扣除戰爭軍火物資
+                    player_stats["stockpile"]["步槍"] = max(0, player_stats["stockpile"]["步槍"] - 2500)
+                    enemy_stats["stockpile"]["步槍"] = max(0, enemy_stats["stockpile"]["800"] if "火砲" not in enemy_stats["stockpile"] else enemy_stats["stockpile"]["火砲"] - 1800)
+                    
+                    # 中華民國人海戰損減半天賦
+                    my_loss = np.random.randint(25000, 75000) if current_player == "中華民國" else np.random.randint(50000, 150000)
+                    enemy_loss = np.random.randint(25000, 75000) if current_owner == "中華民國" else np.random.randint(50000, 150000)
+                    player_stats["manpower"] = max(0, player_stats["manpower"] - my_loss)
+                    enemy_stats["manpower"] = max(0, enemy_stats["manpower"] - enemy_loss)
+                    
+                    # 判定勝負並改染地圖色塊
+                    if attack_power > defense_power:
+                        temp_arr = np.array(st.session_state.grid_map)
+                        temp_arr[r_idx, c_idx] = current_player
+                        st.session_state.grid_map = temp_arr.tolist()
+                        st.session_state.battle_log.insert(0, f"💥 捷報！【{current_user_name}({current_player})】突破 100 仇恨全面宣戰！成功奪取了【{enemy_name}】的格子 [{target_row}, {target_col}]！")
+                    else:
+                        st.session_state.battle_log.insert(0, f"🛡️ 戰敗：【{current_user_name}({current_player})】對 [{target_row}, {target_col}] 的強攻被對方死守擊退！")
+                    
+                    # 標記本回合已使用精準突擊，並刷新畫面鎖定按鈕
+                    st.session_state[attack_flag_key] = True
+                    st.rerun()
+
             else:
                 # 🛑 100 仇恨值宣戰權限判定
                 current_animosity = player_stats["animosity"][current_owner]
