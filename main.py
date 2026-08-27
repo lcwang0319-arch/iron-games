@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # 1. 設置網頁
-st.set_page_config(page_title="Hearts of Grid IV: 史詩整蠱版", page_icon="⚔️", layout="wide")
-st.title("⚔️ Hearts of Grid IV: 20×20 列強爭霸（蘇聯第10回合四分五裂整蠱版）")
+st.set_page_config(page_title="Hearts of Grid IV: 完全體爭霸", page_icon="⚔️", layout="wide")
+st.title("⚔️ Hearts of Grid IV: 20×20 列強爭霸（天賦·歷史宿怨·第10回合蘇聯大解體版）")
 
 # 2. 定義四個參戰國家與整蠱分裂國家的核心色彩
 COUNTRIES = ["中華民國", "德意志國", "大日本帝國", "蘇聯"]
@@ -35,6 +35,11 @@ if not st.session_state.game_started:
     *   **💗 大日本帝國**：【軍備發達】開局**自動解鎖步槍與火砲科技**，且自帶 **3萬支步槍與800門大砲**！
     *   **⚫ 德意志國**：【閃擊意志】同日本一樣開局**自動解鎖步槍與火砲科技**，且自帶 **3萬支步槍與800門大砲**！
     *   **🔴 蘇聯**：【廣袤疆域】開局**直接割據右下角 4 格龐大領地**，並自帶 **11 座民用工廠**，發育速度極快！
+                
+    **🔥 外交仇恨與宣戰規則：**
+    *   **歷史宿怨**：開局時，【中華民國】與【大日本帝國】之間的雙向仇恨值起始即為 **50**。其餘大國互為 **0**。
+    *   **宣戰限制**：對特定強權的仇恨值**必須達到 100**，方可下達精準突擊戰令，奪取對方的格子！
+    *   **無限連打**：解鎖宣戰權後，只要你的軍火和人力充足，同一回合內你可以**無限次連續輸入座標發動精準突擊**！
     """)
     
     col_p1, col_p2 = st.columns(2)
@@ -145,33 +150,27 @@ with st.sidebar:
         if player_stats["tech"]["中型戰車"] == "✅ 已解鎖": player_stats["stockpile"]["戰車"] += player_stats["allocation"]["戰車"] * 15
         player_stats["pp"] += 60
         
-        # 輪流切換到下一個玩家
         st.session_state.turn_index += 1
         if st.session_state.turn_index >= 4:
             st.session_state.turn_index = 0
             st.session_state.total_turns += 1
             
-        # 🔔 核心整蠱機制：當四個玩家都動完，大回合數即將跳入第 10 回合的瞬間，爆發蘇聯大內戰！
+        # 🔔 核心整蠱機制：總回合數即將跳入第 10 回合的瞬間，爆發蘇聯大內戰！
         if st.session_state.total_turns == 10 and not st.session_state.soviet_collapsed:
-            # 1. 撈出全地圖目前屬於蘇聯的所有格子
             temp_map = np.array(st.session_state.grid_map)
             soviet_coords = [(r, c) for r in range(MAP_SIZE) for c in range(MAP_SIZE) if temp_map[r, c] == "蘇聯"]
             
             if soviet_coords:
-                # 隨機打亂蘇聯格子的順序
                 np.random.shuffle(soviet_coords)
-                # 平均切成四份
                 chunks = np.array_split(soviet_coords, 4)
                 
-                # 分別染成不同的顏色（對應不同的整蠱割據勢力）
                 for r, c in chunks[0]: temp_map[r, c] = "法西斯蘇聯" # 白色
                 for r, c in chunks[1]: temp_map[r, c] = "民主蘇聯"   # 黃色
                 for r, c in chunks[2]: temp_map[r, c] = "君主蘇聯"   # 綠色
-                # chunks[3] 維持原本的 "蘇聯" (共產蘇聯)
+                # chunks[3] 維持原本的 "蘇聯"
                 
                 st.session_state.grid_map = temp_map.tolist()
                 
-                # 2. 強行剝奪蘇聯玩家 75% 的資源、軍火庫存與經濟大後方！
                 sov_data = st.session_state.player_data["蘇聯"]
                 sov_data["civ_factories"] = max(1, int(sov_data["civ_factories"] * 0.25))
                 sov_data["mil_factories"] = max(1, int(sov_data["mil_factories"] * 0.25))
@@ -207,11 +206,11 @@ tab_map, tab_tech, tab_action = st.tabs([
     "🎯 戰略專攻與外交戰令 (Military Orders)"
 ])
 
-# --- TAB 1: 地圖渲染（完美支援整蠱後的白色、黃色、綠色、紅色四色拼接） ---
+# --- TAB 1: 地圖渲染 ---
 with tab_map:
     st.header("🗺️ 20×20 巨型割據防區圖 (400格)")
     if st.session_state.soviet_collapsed:
-        st.warning("⚠️ 警告：地圖右下角已進入【蘇聯大解體狀態】，請注意白色、黃色、綠色及紅色的多政權割據戰區！")
+        st.warning("⚠️ 警告：地圖右下角已進入【蘇聯大解體狀態】，請注意多政權割據戰區！")
         
     fig, ax = plt.subplots(figsize=(9, 9), facecolor='#1e1e1e')
     ax.set_facecolor('#111111')
@@ -224,7 +223,6 @@ with tab_map:
             ax.add_patch(rect)
             
             if owner != "中立荒漠":
-                # 簡稱顯示，方便同學看地圖時傻眼
                 lbl = owner[:2]
                 if owner == "法西斯蘇聯": lbl = "白蘇"
                 elif owner == "民主蘇聯": lbl = "黃蘇"
@@ -240,8 +238,7 @@ with tab_map:
     ax.grid(True, color='#222222', linestyle='-', linewidth=0.5)
     ax.tick_params(colors='white', labelsize=8)
     st.pyplot(fig)
-    plt.close(fig) # 確保關閉畫布，防止連續點擊時記憶體洩漏
-    
+    plt.close(fig)
     # 領土統計面板（動態支援整蠱解體後的白、黃、綠三色 NPC 割據數據）
     st.subheader("📊 全球版圖控制統計")
     counts = {"中華民國": 0, "德意志國": 0, "大日本帝國": 0, "蘇聯": 0, "法西斯蘇聯": 0, "民主蘇聯": 0, "君主蘇聯": 0, "中立荒漠": 0}
@@ -256,7 +253,7 @@ with tab_map:
     mc3.metric(f"💗 大日本帝國 ({st.session_state.player_names['大日本帝國']})", f"{counts['大日本帝國']} 格")
     mc4.metric(f"🔴 共產蘇聯 ({st.session_state.player_names['蘇聯']})", f"{counts['蘇聯']} 格")
     
-    # 如果進入第10回合觸發了解體，自動加開第二排面板顯示割據的軍閥領土（進一步在介面上整蠱同學）
+    # 如果進入第10大回合觸發了解體，自動加開第二排面板顯示割據的軍閥領土（在介面上徹底整蠱選蘇聯的同學）
     if st.session_state.soviet_collapsed:
         st.markdown("---")
         st.caption("🚨 遠東最高統帥部通報：以下為分裂自治的非法叛軍政權盤踞領土統計")
@@ -267,7 +264,7 @@ with tab_map:
 
 # --- TAB 2: 科研與產線（四國完全獨立，且日德玩家開局自動全解鎖科技） ---
 with tab_tech:
-    st.header(f"🔬 【{current_user_name}】的 {current_player} 軍工科學院")
+    st.header(f"🔬 {current_player} 軍工科學院")
     
     st.subheader("💡 獨立軍備科研（日德玩家開局已解鎖，其餘玩家需花 PP 研發）")
     tc1, tc2, tc3 = st.columns(3)
@@ -324,9 +321,7 @@ with tab_tech:
         st.success("⚙️ 軍工生產線配置成功更新！本回合結束時會將新製武器送入你的私人倉庫。")
         st.rerun()
 
-# --- TAB 3: 戰略擴張與外交戰令（無限精準突擊與主動挑釁） ---
-with tab_action:
-    # --- TAB 3: 戰略擴張與外交戰令（精準突擊無限連打與主動挑釁） ---
+# --- TAB 3: 外交與擴張戰令（包含無限精準突擊、集團軍大拓荒與仇恨挑釁） ---
 with tab_action:
     st.header(f"🎯 【{current_user_name}】的最高統帥部與外交戰令")
     
@@ -426,14 +421,14 @@ with tab_action:
                     
                     # 🟢 NumPy 轉置法安全大範圍拓荒染色 🟢
                     temp_arr = np.array(st.session_state.grid_map)
-                    for r, c in chosen_spots: 
-                        temp_arr[r, c] = current_player
+                    for r, c in chosen_spots: temp_arr[r, c] = current_player
                     st.session_state.grid_map = temp_arr.tolist()
                     
                     player_stats["civ_factories"] += conquest_count
                     player_stats["stockpile"]["步槍"] += conquest_count * 500
                     st.session_state.battle_log.insert(0, f"⚡ 拓荒：【{current_user_name}({current_player})】擴張吞併了 {conquest_count} 格中立區，工廠產線規模擴大！")
                     
+                    # ⚠️ 歷史摩擦機制：在瘋狂盲拓荒大圖時，有 35% 機率意外引爆邊境危機，強行拉升隨機大國的仇恨值！
                     if np.random.rand() < 0.35:
                         other_countries = [c for c in COUNTRIES if c != current_player]
                         hit_country = np.random.choice(other_countries)
@@ -442,6 +437,7 @@ with tab_action:
                         st.session_state.player_data[hit_country]["animosity"][current_player] = min(100, st.session_state.player_data[hit_country]["animosity"][current_player] + clash_gain)
                         st.session_state.battle_log.insert(0, f"💥 邊境擦槍走火！我軍在開拓邊疆時與【{hit_country}】守軍發生零星摩擦，雙方仇恨飆升 {clash_gain} 點！")
                     st.rerun()
-                else: st.error("❌ 全地圖中立荒漠已被瓜分完畢！")
-            else: st.error("❌ 政治點數不足 40 PP！")
-
+                else: 
+                    st.error("❌ 全地圖中立荒漠已被瓜分完畢！請改用選項一精準突擊對手領土！")
+            else: 
+                st.error("❌ 政治點數不足 40 PP，無法發動集團軍大規模盲擴張！")
