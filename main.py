@@ -169,20 +169,25 @@ with st.sidebar:
             st.session_state.total_turns += 1
             
         # 🤫 隱藏內戰定時炸彈
+               # 🤫 隱藏內戰定時炸彈：完全沒有痕跡，第 10 大回合跳出的瞬間直接就地引爆！
         if st.session_state.total_turns == 10 and not st.session_state.soviet_collapsed:
             temp_map = np.array(st.session_state.grid_map)
             soviet_coords = [(r, c) for r in range(MAP_SIZE) for c in range(MAP_SIZE) if temp_map[r, c] == "蘇聯"]
             
             if soviet_coords:
                 np.random.shuffle(soviet_coords)
+                # 正確將蘇聯國土切成 4 個完全不同的獨立子區塊
                 chunks = np.array_split(soviet_coords, 4)
                 
-                for r, c in chunks: temp_map[r, c] = "法西斯蘇聯" 
-                for r, c in chunks: temp_map[r, c] = "民主蘇聯"   
-                for r, c in chunks: temp_map[r, c] = "君主蘇聯"   
+                # 🟢 修正後的正確填色邏輯：分別使用 0, 1, 2, 3 讀取不同的子區塊 🟢
+                for r, c in chunks[0]: temp_map[r, c] = "法西斯蘇聯" # 白色
+                for r, c in chunks[1]: temp_map[r, c] = "民主蘇聯"   # 黃色
+                for r, c in chunks[2]: temp_map[r, c] = "君主蘇聯"   # 綠色
+                for r, c in chunks[3]: temp_map[r, c] = "蘇聯"       # 紅色 (原本共產)
                 
                 st.session_state.grid_map = temp_map.tolist()
                 
+                # 扣除蘇聯玩家 75% 的資源、軍火庫存與經濟大後方
                 sov_data = st.session_state.player_data["蘇聯"]
                 sov_data["civ_factories"] = max(1, int(sov_data["civ_factories"] * 0.25))
                 sov_data["mil_factories"] = max(1, int(sov_data["mil_factories"] * 0.25))
@@ -193,6 +198,7 @@ with st.sidebar:
                 
                 st.session_state.soviet_collapsed = True
                 st.session_state.battle_log.insert(0, "🚨🚨 歷史震撼事件：蘇維埃二次大內戰引爆！！最高蘇維埃政權瓦解，全境瞬間四分五裂！法西斯白軍、民主黃軍、君主綠軍割據歐亞，原本的共產紅軍痛失 75% 國土與後方軍火庫！！")
+
         
         st.rerun()
 
