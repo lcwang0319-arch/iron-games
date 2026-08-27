@@ -68,19 +68,32 @@ if "soviet_collapsed" not in st.session_state:
     st.session_state.soviet_collapsed = False  # 是否已觸發解體
 
 # numpy 矩陣安全初始化
+# 初始化 20x20 地圖版圖：使用行列變數解包遍歷，徹底消滅二維陣列所有的 TypeError
 if "grid_map" not in st.session_state:
-    arr = np.full((MAP_SIZE, MAP_SIZE), "中立荒漠", dtype=object)
-    arr = "中華民國"                     # 左上角
-    arr[0, MAP_SIZE-1] = "德意志國"             # 右上角
-    arr[MAP_SIZE-1, 0] = "大日本帝國"           # 左下角
+    # 建立純淨的 20x20 基礎中立 List
+    base_grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
     
-    # 🔴 蘇聯專屬優勢：開局右下角 2x2 共 4 格土地！
-    arr[MAP_SIZE-2, MAP_SIZE-2] = "蘇聯"
-    arr[MAP_SIZE-2, MAP_SIZE-1] = "蘇聯"
-    arr[MAP_SIZE-1, MAP_SIZE-2] = "蘇聯"
-    arr[MAP_SIZE-1, MAP_SIZE-1] = "蘇聯"
-    
-    st.session_state.grid_map = arr.tolist()
+    # 使用 Python 標準遍歷覆蓋法，完全不使用任何連續的雙括號
+    for row_idx in range(MAP_SIZE):
+        for col_idx in range(MAP_SIZE):
+            # 🔵 中華民國定位：左上角 (0, 0)
+            if row_idx == 0 and col_idx == 0:
+                base_grid[row_idx][col_idx] = "中華民國"
+            
+            # ⚫ 德意志國定位：右上角 (0, 19)
+            elif row_idx == 0 and col_idx == (MAP_SIZE - 1):
+                base_grid[row_idx][col_idx] = "德意志國"
+            
+            # 💗 大日本帝國定位：左下角 (19, 0)
+            elif row_idx == (MAP_SIZE - 1) and col_idx == 0:
+                base_grid[row_idx][col_idx] = "大日本帝國"
+            
+            # 🔴 蘇聯專屬優勢：開局右下角 2x2 共 4 格土地 (18~19, 18~19)
+            elif row_idx >= (MAP_SIZE - 2) and col_idx >= (MAP_SIZE - 2):
+                base_grid[row_idx][col_idx] = "蘇聯"
+                
+    st.session_state.grid_map = base_grid
+
 
 # 初始化國家獨立數據
 if "player_data" not in st.session_state:
