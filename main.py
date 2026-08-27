@@ -324,9 +324,29 @@ with tab_tech:
     st.caption(f"你當前總共擁有 {player_stats['mil_factories']} 座軍用工廠。請調配生產權重（總工廠數請勿超過上限）：")
     
     # 產線分配輸入框，會隨輪替玩家自動刷新
-    alloc_rifle = st.number_input("分配給【步槍產線】的工廠數", 0, player_stats['mil_factories'], player_stats['allocation']['步槍'], key="ar")
-    alloc_art = st.number_input("分配給【火砲產線】的工廠數", 0, player_stats['mil_factories'] - alloc_rifle, player_stats['allocation']['火砲'], key="aa")
-    alloc_tank = st.number_input("分配給【戰車產線】的工廠數", 0, player_stats['mil_factories'] - alloc_rifle - alloc_art, player_stats['allocation']['戰車'], key="at")
+       st.markdown("---")
+    st.subheader("🏭 本輪軍用工廠產線分配")
+    st.caption(f"你當前總共擁有 {player_stats['mil_factories']} 座軍用工廠。請調配生產權重（總工廠數請勿超過上限）：")
+    
+    # 🟢 安全水位防禦（修復解體後數值超出上限的錯誤，確保整蠱計畫不穿幫） 🟢
+    current_max_mil = player_stats['mil_factories']
+    
+    # 如果當前的分配值大於剩餘工廠上限（這在蘇聯同學被制裁裁撤工廠時會發生），強制重設為上限，防止 Streamlit 噴錯
+    safe_alloc_rifle = min(player_stats['allocation']['步槍'], current_max_mil)
+    
+    alloc_rifle = st.number_input("分配給【步槍產線】的工廠數", 0, current_max_mil, safe_alloc_rifle, key="ar")
+    
+    # 計算剩餘可分配工廠空間
+    remaining_after_rifle = max(0, current_max_mil - alloc_rifle)
+    safe_alloc_art = min(player_stats['allocation']['火砲'], remaining_after_rifle)
+    
+    alloc_art = st.number_input("分配給【火砲產線】的工廠數", 0, remaining_after_rifle, safe_alloc_art, key="aa")
+    
+    # 再次計算剩餘空間
+    remaining_after_art = max(0, remaining_after_rifle - alloc_art)
+    safe_alloc_tank = min(player_stats['allocation']['戰車'], remaining_after_art)
+    
+    alloc_tank = st.number_input("分配給【戰車產線】的工廠數", 0, remaining_after_art, safe_alloc_tank, key="at")
     
     if st.button("⚙️ 儲存本輪產線配置", use_container_width=True):
         player_stats['allocation']['步槍'] = alloc_rifle
@@ -334,6 +354,7 @@ with tab_tech:
         player_stats['allocation']['戰車'] = alloc_tank
         st.success("⚙️ 軍工生產線配置成功更新！本回合結束時會將新製武器送入你的私人倉庫。")
         st.rerun()
+
 
 # --- TAB 3: 外交與擴張戰令 (排版縮進已完全修正對齊，每回合限制突擊 1 次平衡版) ---
 with tab_action:
