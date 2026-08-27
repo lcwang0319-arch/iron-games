@@ -28,7 +28,7 @@ if "game_started" not in st.session_state:
 if "player_names" not in st.session_state:
     st.session_state.player_names = {c: f"玩家_{i+1}" for i, c in enumerate(COUNTRIES)}
 
-# 🤫 100% 純淨的開局公告：沒有任何括號內心話，毫無破綻！
+# 🤫 瞞天過海的開局公告：100% 抹除任何「第10回合、整蠱、解體、四分五裂」的蛛絲馬跡！
 if not st.session_state.game_started:
     st.header("🎮 多人單機熱座模式：請四位玩家分配國家與確認開局特質")
     st.markdown("""
@@ -69,7 +69,7 @@ if "total_turns" not in st.session_state:
 if "soviet_collapsed" not in st.session_state:
     st.session_state.soviet_collapsed = False  
 
-# 使用標準元組解包法安全初始化地圖，強行安插「阿嬤冰箱級」地方軍閥包圍網
+# 使用標準元組解包法安全初始化地圖
 if "grid_map" not in st.session_state:
     base_grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
     for row_idx in range(MAP_SIZE):
@@ -158,9 +158,12 @@ with st.sidebar:
     st.success(f"👉 請【{current_user_name}】完成決策後結束回合。")
     
     if st.button("🏁 結束本回合 (End Turn)", type="primary", use_container_width=True):
-        if player_stats["tech"]["中正式步槍"] == "✅ 已解鎖": player_stats["stockpile"]["步槍"] += player_stats["allocation"]["步槍"] * 800
-        if player_stats["tech"]["博福斯山砲"] == "✅ 已解鎖": player_stats["stockpile"]["火砲"] += player_stats["allocation"]["火砲"] * 80
-        if player_stats["tech"]["中型戰車"] == "✅ 已解鎖": player_stats["stockpile"]["戰車"] += player_stats["allocation"]["戰車"] * 15
+        if player_stats["tech"]["中文武器自行研發" if "中正式步槍" not in player_stats["tech"] else "中正式步槍"] == "✅ 已解鎖": 
+            player_stats["stockpile"]["步槍"] += player_stats["allocation"]["步槍"] * 800
+        if player_stats["tech"]["博福斯山砲"] == "✅ 已解鎖": 
+            player_stats["stockpile"]["火砲"] += player_stats["allocation"]["火砲"] * 80
+        if player_stats["tech"]["中型戰車"] == "✅ 已解鎖": 
+            player_stats["stockpile"]["戰車"] += player_stats["allocation"]["戰車"] * 15
         player_stats["pp"] += 60
         
         st.session_state.turn_index += 1
@@ -169,25 +172,21 @@ with st.sidebar:
             st.session_state.total_turns += 1
             
         # 🤫 隱藏內戰定時炸彈
-               # 🤫 隱藏內戰定時炸彈：完全沒有痕跡，第 10 大回合跳出的瞬間直接就地引爆！
         if st.session_state.total_turns == 10 and not st.session_state.soviet_collapsed:
             temp_map = np.array(st.session_state.grid_map)
             soviet_coords = [(r, c) for r in range(MAP_SIZE) for c in range(MAP_SIZE) if temp_map[r, c] == "蘇聯"]
             
             if soviet_coords:
                 np.random.shuffle(soviet_coords)
-                # 正確將蘇聯國土切成 4 個完全不同的獨立子區塊
                 chunks = np.array_split(soviet_coords, 4)
                 
-                # 🟢 修正後的正確填色邏輯：分別使用 0, 1, 2, 3 讀取不同的子區塊 🟢
-                for r, c in chunks[0]: temp_map[r, c] = "法西斯蘇聯" # 白色
-                for r, c in chunks[1]: temp_map[r, c] = "民主蘇聯"   # 黃色
-                for r, c in chunks[2]: temp_map[r, c] = "君主蘇聯"   # 綠色
-                for r, c in chunks[3]: temp_map[r, c] = "蘇聯"       # 紅色 (原本共產)
+                for r, c in chunks[0]: temp_map[r, c] = "法西斯蘇聯" 
+                for r, c in chunks[1]: temp_map[r, c] = "民主蘇聯"   
+                for r, c in chunks[2]: temp_map[r, c] = "君主蘇聯"   
+                for r, c in chunks[3]: temp_map[r, c] = "蘇聯"       
                 
                 st.session_state.grid_map = temp_map.tolist()
                 
-                # 扣除蘇聯玩家 75% 的資源、軍火庫存與經濟大後方
                 sov_data = st.session_state.player_data["蘇聯"]
                 sov_data["civ_factories"] = max(1, int(sov_data["civ_factories"] * 0.25))
                 sov_data["mil_factories"] = max(1, int(sov_data["mil_factories"] * 0.25))
@@ -198,7 +197,6 @@ with st.sidebar:
                 
                 st.session_state.soviet_collapsed = True
                 st.session_state.battle_log.insert(0, "🚨🚨 歷史震撼事件：蘇維埃二次大內戰引爆！！最高蘇維埃政權瓦解，全境瞬間四分五裂！法西斯白軍、民主黃軍、君主綠軍割據歐亞，原本的共產紅軍痛失 75% 國土與後方軍火庫！！")
-
         
         st.rerun()
 
@@ -276,12 +274,11 @@ with tab_map:
     if st.session_state.soviet_collapsed:
         sc2.metric("⚪ 法西斯蘇聯 (NPC)", f"{counts['法西斯蘇聯']} 格")
         sc3.metric("🟡 民主蘇聯 (NPC)", f"{counts['民主蘇聯']} 格")
-        sc4.metric("🟢 君主蘇聯 (NPC)", f"{counts['君主蘇聯']} 格")
+        sc4.metric("🟢 君主蘇聯 (NPC)", f"{counts['君主蘇联']} 格")
 
 # --- TAB 2: 科研與產線 ---
-# --- TAB 2: 科研與產線（四國完全獨立，且日德玩家開局自動全解鎖科技） ---
 with tab_tech:
-    st.header(f"🔬 {current_player} 軍工科學院")
+        st.header(f"🔬 {current_player} 軍工科學院")
     
     st.subheader("💡 獨立軍備科研（日德玩家開局已解鎖，其餘玩家需花 PP 研發）")
     tc1, tc2, tc3 = st.columns(3)
@@ -304,6 +301,7 @@ with tab_tech:
             if st.button("🧪 消耗 100 PP 研發重火砲", key="a_tech"):
                 player_stats["pp"] -= 100
                 player_stats["tech"]["博福斯山砲"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖火砲產線，每回合產出 80 門山砲。")
                 st.rerun()
         else: 
             st.write(f"當前狀態: **{art_status}**")
@@ -315,6 +313,7 @@ with tab_tech:
             if st.button("🧪 消耗 150 PP 研發裝甲裝備", key="t_tech"):
                 player_stats["pp"] -= 150
                 player_stats["tech"]["中型戰車"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖坦克產線，每回合產出 15 輛戰車。")
                 st.rerun()
         else: 
             st.write(f"當前狀態: **{tank_status}**")
@@ -323,29 +322,17 @@ with tab_tech:
     st.subheader("🏭 本輪軍用工廠產線分配")
     st.caption(f"你當前總共擁有 {player_stats['mil_factories']} 座軍用工廠。請調配生產權重（總工廠數請勿超過上限）：")
     
-    # 產線分配輸入框，會隨輪替玩家自動刷新
-       st.markdown("---")
-    st.subheader("🏭 本輪軍用工廠產線分配")
-    st.caption(f"你當前總共擁有 {player_stats['mil_factories']} 座軍用工廠。請調配生產權重（總工廠數請勿超過上限）：")
-    
     # 🟢 安全水位防禦（修復解體後數值超出上限的錯誤，確保整蠱計畫不穿幫） 🟢
     current_max_mil = player_stats['mil_factories']
-    
-    # 如果當前的分配值大於剩餘工廠上限（這在蘇聯同學被制裁裁撤工廠時會發生），強制重設為上限，防止 Streamlit 噴錯
     safe_alloc_rifle = min(player_stats['allocation']['步槍'], current_max_mil)
-    
     alloc_rifle = st.number_input("分配給【步槍產線】的工廠數", 0, current_max_mil, safe_alloc_rifle, key="ar")
     
-    # 計算剩餘可分配工廠空間
     remaining_after_rifle = max(0, current_max_mil - alloc_rifle)
     safe_alloc_art = min(player_stats['allocation']['火砲'], remaining_after_rifle)
-    
     alloc_art = st.number_input("分配給【火砲產線】的工廠數", 0, remaining_after_rifle, safe_alloc_art, key="aa")
     
-    # 再次計算剩餘空間
     remaining_after_art = max(0, remaining_after_rifle - alloc_art)
     safe_alloc_tank = min(player_stats['allocation']['戰車'], remaining_after_art)
-    
     alloc_tank = st.number_input("分配給【戰車產線】的工廠數", 0, remaining_after_art, safe_alloc_tank, key="at")
     
     if st.button("⚙️ 儲存本輪產線配置", use_container_width=True):
@@ -354,7 +341,6 @@ with tab_tech:
         player_stats['allocation']['戰車'] = alloc_tank
         st.success("⚙️ 軍工生產線配置成功更新！本回合結束時會將新製武器送入你的私人倉庫。")
         st.rerun()
-
 
 # --- TAB 3: 外交與擴張戰令 (排版縮進已完全修正對齊，每回合限制突擊 1 次平衡版) ---
 with tab_action:
@@ -395,7 +381,6 @@ with tab_action:
                 st.session_state[attack_flag_key] = True
                 st.rerun()
             else:
-                # 🛑 100 仇恨值宣戰權限判定
                 current_animosity = player_stats["animosity"].get(current_owner, 0)
                 if current_animosity < 100:
                     st.error(f"🔒 外交限制：你對【{current_owner}】的仇恨值目前僅為 {current_animosity} / 100！在仇恨破百正式宣戰前，部隊無法越界搶奪格子！請先至右側製造外交爭端！")
@@ -448,7 +433,7 @@ with tab_action:
                 player_stats["animosity"][provoke_target] = min(100, player_stats["animosity"][provoke_target] + gain)
                 if provoke_target in st.session_state.player_data:
                     st.session_state.player_data[provoke_target]["animosity"][current_player] = min(100, st.session_state.player_data[provoke_target]["animosity"].get(current_player, 0) + gain)
-                st.session_state.battle_log.insert(0, f"📡 外交挑釁：【{current_user_name}({current_player})】故意尋釁滋事，與【{provoke_target}】的仇恨值暴增 {gain} 點！")
+                st.session_state.battle_log.insert(0, f"📡 外交挑釁：【{current_user_name}({current_player})】故意尋釁滋事，與【{provoke_target}】的雙向仇恨值暴增 {gain} 點！")
                 st.rerun()
             else: st.error("❌ 政治點數不足 30 PP！")
                 
