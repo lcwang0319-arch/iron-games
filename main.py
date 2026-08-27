@@ -13,7 +13,7 @@ COLOR_MAP = {
     "德意志國": "#222222",  # 黑色 ⚫
     "大日本帝國": "#ff9999",  # 粉紅色 💗
     "蘇聯": "#cc0000",      # 紅色 🔴
-    "地方軍閥": "#e67e22",  # 深橘色 🥮 (阿嬤冰箱級軍閥，包圍中華民國)
+    "地方軍閥": "#e67e22",  # 深橘色 🥮 (包圍中華民國)
     "法西斯蘇聯": "#ffffff",  # 白色 ⚪ (內部隱藏機制)
     "民主蘇聯": "#ffcc00",    # 黃色 🟡 (內部隱藏機制)
     "君主蘇聯": "#22aa22",    # 綠色 🟢 (內部隱藏機制)
@@ -141,7 +141,7 @@ elif current_player == "蘇聯":
     if st.session_state.soviet_collapsed:
         st.error("🚨 【內戰懲罰】：蘇聯已陷入瘋狂的四分五裂狀態！你的大部分工廠與武器物資已被割據軍閥強行沒收！")
     else:
-        st.error("💡 【紅色鋼鐵雄心激活】：你開局就坐擁 4 格核心領土，並自帶高達 11 座民用工廠，後方經濟與資源累積速度冠絕全場！")
+        st.error("💡 【紅色鋼鐵雄心激活】：你開局就坐擁 4 格核心領土，並自帶高達 11 座民用工廠，經濟與資源累積速度冠絕全場！")
 
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1: st.metric("👑 政治點數 (PP)", f"{player_stats['pp']}")
@@ -158,7 +158,7 @@ with st.sidebar:
     st.success(f"👉 請【{current_user_name}】完成決策後結束回合。")
     
     if st.button("🏁 結束本回合 (End Turn)", type="primary", use_container_width=True):
-        if player_stats["tech"]["中文武器自行研發" if "中正式步槍" not in player_stats["tech"] else "中正式步槍"] == "✅ 已解鎖": 
+        if player_stats["tech"]["中正式步槍"] == "✅ 已解鎖": 
             player_stats["stockpile"]["步槍"] += player_stats["allocation"]["步槍"] * 800
         if player_stats["tech"]["博福斯山砲"] == "✅ 已解鎖": 
             player_stats["stockpile"]["火砲"] += player_stats["allocation"]["火砲"] * 80
@@ -274,7 +274,7 @@ with tab_map:
     if st.session_state.soviet_collapsed:
         sc2.metric("⚪ 法西斯蘇聯 (NPC)", f"{counts['法西斯蘇聯']} 格")
         sc3.metric("🟡 民主蘇聯 (NPC)", f"{counts['民主蘇聯']} 格")
-        sc4.metric("🟢 君主蘇聯 (NPC)", f"{counts['君主蘇联']} 格")
+        sc4.metric("🟢 君主蘇聯 (NPC)", f"{counts['君主蘇聯']} 格")
 
 # --- TAB 2: 科研與產線 ---
 with tab_tech:
@@ -473,4 +473,3 @@ with tab_action:
                     st.error("❌ 全地圖中立荒漠已被瓜分完畢！請改用選項一精準突擊對手領土！")
             else: 
                 st.error("❌ 政治點數不足 40 PP，無法發動集團軍大規模盲擴張！")
-
