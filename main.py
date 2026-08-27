@@ -283,4 +283,192 @@ with tab_map:
         sc4.metric("🟢 君主蘇聯 (NPC)", f"{counts['君主蘇聯']} 格")
 
 # --- TAB 2: 科研與產線 ---
+# --- TAB 2: 科研與產線（四國完全獨立，且日德玩家開局自動全解鎖科技） ---
 with tab_tech:
+    st.header(f"🔬 {current_player} 軍工科學院")
+    
+    st.subheader("💡 獨立軍備科研（日德玩家開局已解鎖，其餘玩家需花 PP 研發）")
+    tc1, tc2, tc3 = st.columns(3)
+    
+    with tc1:
+        st.markdown("##### 🔫 中正式步槍 (1936)")
+        rifle_status = player_stats["tech"]["中正式步槍"]
+        if rifle_status == "🔒 未研發" and player_stats["pp"] >= 50:
+            if st.button("🧪 消耗 50 PP 研發輕武器", key="r_tech"):
+                player_stats["pp"] -= 50
+                player_stats["tech"]["中正式步槍"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖步槍產線，每回合產出 800 支步槍。")
+                st.rerun()
+        else: 
+            st.write(f"當前狀態: **{rifle_status}**")
+            
+    with tc2:
+        st.markdown("##### 🍏 博福斯山砲 (1939)")
+        art_status = player_stats["tech"]["博福斯山砲"]
+        if art_status == "🔒 未研發" and player_stats["pp"] >= 100:
+            if st.button("🧪 消耗 100 PP 研發重火砲", key="a_tech"):
+                player_stats["pp"] -= 100
+                player_stats["tech"]["博福斯山砲"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖火砲產線，每回合產出 80 門山砲。")
+                st.rerun()
+        else: 
+            st.write(f"當前狀態: **{art_status}**")
+            
+    with tc3:
+        st.markdown("##### 🚜 中型戰車 (1941)")
+        tank_status = player_stats["tech"]["中型戰車"]
+        if tank_status == "🔒 未研發" and player_stats["pp"] >= 150:
+            if st.button("🧪 消耗 150 PP 研發裝甲裝備", key="t_tech"):
+                player_stats["pp"] -= 150
+                player_stats["tech"]["中型戰車"] = "✅ 已解鎖"
+                st.success("研發成功！解鎖坦克產線，每回合產出 15 輛戰車。")
+                st.rerun()
+        else: 
+            st.write(f"當前狀態: **{tank_status}**")
+
+    st.markdown("---")
+    st.subheader("🏭 本輪軍用工廠產線分配")
+    st.caption(f"你當前總共擁有 {player_stats['mil_factories']} 座軍用工廠。請調配生產權重（總工廠數請勿超過上限）：")
+    
+    alloc_rifle = st.number_input("分配給【步槍產線】的工廠數", 0, player_stats['mil_factories'], player_stats['allocation']['步槍'], key="ar")
+    alloc_art = st.number_input("分配給【火砲產線】的工廠數", 0, player_stats['mil_factories'] - alloc_rifle, player_stats['allocation']['火砲'], key="aa")
+    alloc_tank = st.number_input("分配給【戰車產線】的工廠數", 0, player_stats['mil_factories'] - alloc_rifle - alloc_art, player_stats['allocation']['戰車'], key="at")
+    
+    if st.button("⚙️ 儲存本輪產線配置", use_container_width=True):
+        player_stats['allocation']['步槍'] = alloc_rifle
+        player_stats['allocation']['火砲'] = alloc_art
+        player_stats['allocation']['戰車'] = alloc_tank
+        st.success("⚙️ 軍工生產線配置成功更新！本回合結束時會將新製武器送入你的私人倉庫。")
+        st.rerun()
+
+# --- TAB 3: 外交與擴張戰令 (排版縮進已完全修正對齊，每回合限制突擊 1 次平衡版) ---
+with tab_action:
+    st.header(f"🎯 【{current_user_name}】的最高統帥部與外交戰令")
+    
+    ac1, ac2 = st.columns(2)
+    with ac1:
+        st.subheader("🛠️ 選項一：精準指定方格突擊（每回合限 1 次）")
+        
+        attack_flag_key = f"attack_used_{st.session_state.total_turns}_{st.session_state.turn_index}"
+        if attack_flag_key not in st.session_state:
+            st.session_state[attack_flag_key] = False
+            
+        target_row = st.number_input("目標橫列座標 (Row 1-20)", 1, 20, 1, key="tgt_row")
+        target_col = st.number_input("目標縱行座標 (Col 1-20)", 1, 20, 1, key="tgt_col")
+        
+        r_idx = target_row - 1
+        c_idx = target_col - 1
+        current_owner = st.session_state.grid_map[r_idx][c_idx]
+        st.write(f"🔍 目標座標 `[{target_row}, {target_col}]` 控制者：**{current_owner}**")
+        
+        is_disabled = st.session_state[attack_flag_key]
+        if is_disabled:
+            st.warning("⚠️ 本回合你已經下達過精準突擊或擴張指令了！請等待下一回合解鎖。")
+            
+        if st.button("⚔️ 下達精準點對點突擊！", type="primary", use_container_width=True, disabled=is_disabled):
+            if current_owner == current_player:
+                st.error("❌ 這是你自己的領土！請選擇其他敵方或中立格子進攻！")
+            elif current_owner in ["法西斯蘇聯", "民主蘇聯", "君主蘇聯"]:
+                st.error("🔒 軍閥限制：該方格為內戰軍閥盤踞地，部隊目前因戰略混亂無法越界進攻這些NPC分裂勢力！")
+            elif current_owner == "中立荒漠":
+                temp_arr = np.array(st.session_state.grid_map)
+                temp_arr[r_idx, c_idx] = current_player
+                st.session_state.grid_map = temp_arr.tolist()
+                
+                player_stats["civ_factories"] += 1
+                st.session_state.battle_log.insert(0, f"🚩 精準擴張：【{current_user_name}({current_player})】開拓佔領了中立方格 [{target_row}, {target_col}]！")
+                st.session_state[attack_flag_key] = True
+                st.rerun()
+            else:
+                current_animosity = player_stats["animosity"].get(current_owner, 0)
+                if current_animosity < 100:
+                    st.error(f"🔒 外交限制：你對【{current_owner}】的仇恨值目前僅為 {current_animosity} / 100！在仇恨破百正式宣戰前，部隊無法越界搶奪格子！請先至右側製造外交爭端！")
+                else:
+                    enemy_name = "地方守軍" if current_owner == "地方軍閥" else st.session_state.player_names[current_owner]
+                    enemy_stats = st.session_state.player_data[current_owner]
+                    
+                    r_bonus = 35 if player_stats["stockpile"]["步槍"] > 5000 else -15
+                    a_bonus = 50 if player_stats["stockpile"]["火砲"] > 300 else 0
+                    t_bonus = 80 if player_stats["stockpile"]["戰車"] > 20 else 0
+                    attack_power = 50 + r_bonus + a_bonus + t_bonus + np.random.randint(-15, 15)
+                    
+                    enemy_r_bonus = 35 if enemy_stats["stockpile"]["步槍"] > 5000 else -15
+                    enemy_a_bonus = 40 if enemy_stats["stockpile"].get("火砲", 0) > 200 else 0
+                    defense_power = 60 + enemy_r_bonus + enemy_a_bonus + np.random.randint(-10, 10)
+                    
+                    player_stats["stockpile"]["步槍"] = max(0, player_stats["stockpile"]["步槍"] - 2500)
+                    enemy_stats["stockpile"]["步槍"] = max(0, enemy_stats["stockpile"]["步槍"] - 1800)
+                    
+                    my_loss = np.random.randint(25000, 75000) if current_player == "中華民國" else np.random.randint(50000, 150000)
+                    enemy_loss = np.random.randint(25000, 75000) if current_owner == "中華民國" else np.random.randint(50000, 150000)
+                    player_stats["manpower"] = max(0, player_stats["manpower"] - my_loss)
+                    if "manpower" in enemy_stats:
+                        enemy_stats["manpower"] = max(0, enemy_stats["manpower"] - enemy_loss)
+                    
+                    if attack_power > defense_power:
+                        temp_arr = np.array(st.session_state.grid_map)
+                        temp_arr[r_idx, c_idx] = current_player
+                        st.session_state.grid_map = temp_arr.tolist()
+                        st.session_state.battle_log.insert(0, f"💥 捷報！【{current_user_name}({current_player})】突破 100 仇恨全面爆發攻勢！成功強奪了【{enemy_name}】的格子 [{target_row}, {target_col}]！")
+                    else:
+                        st.session_state.battle_log.insert(0, f"🛡️ 戰敗：【{current_user_name}({current_player})】對 [{target_row}, {target_col}] 的強攻被對方死守擊退！")
+                    st.session_state[attack_flag_key] = True
+                    st.rerun()
+
+    with ac2:
+        st.subheader("⚡ 選項二：集團軍拓荒與「外交製造爭端」")
+        
+        st.markdown("##### 📡 統帥部外交部：主動挑釁（提升仇恨值）")
+        provoke_options = [c for c in COUNTRIES if c != current_player]
+        if current_player == "中華民國":
+            provoke_options.append("地方軍閥")
+            
+        provoke_target = st.selectbox("請選擇你要主動挑釁、製造地緣政治摩擦的國家/軍閥：", provoke_options)
+        
+        if st.button(f"🔥 消耗 30 PP 製造爭端，挑釁【{provoke_target}】", use_container_width=True):
+            if player_stats["pp"] >= 30:
+                player_stats["pp"] -= 30
+                gain = np.random.randint(15, 26)
+                player_stats["animosity"][provoke_target] = min(100, player_stats["animosity"][provoke_target] + gain)
+                if provoke_target in st.session_state.player_data:
+                    st.session_state.player_data[provoke_target]["animosity"][current_player] = min(100, st.session_state.player_data[provoke_target]["animosity"].get(current_player, 0) + gain)
+                st.session_state.battle_log.insert(0, f"📡 外交挑釁：【{current_user_name}({current_player})】故意尋釁滋事，與【{provoke_target}】的仇恨值暴增 {gain} 點！")
+                st.rerun()
+            else: st.error("❌ 政治點數不足 30 PP！")
+                
+        st.markdown("---")
+        st.markdown("##### 🚀 啟動集團軍：閃擊大範圍拓荒 (消耗 40 PP)")
+        st.caption("隨機吞併 1~5 格中立灰色荒漠。在中原瘋狂擴張的同時，有 35% 機率隨機引爆邊境摩擦，導致隨機大國對你的仇恨度飆升！")
+        
+        if st.button("發動集團軍拓荒！", use_container_width=True):
+            if player_stats["pp"] >= 40:
+                player_stats["pp"] -= 40
+                neutral_coords = []
+                for r in range(MAP_SIZE):
+                    for c in range(MAP_SIZE):
+                        if st.session_state.grid_map[r][c] == "中立荒漠": neutral_coords.append((r, c))
+                
+                if neutral_coords:
+                    conquest_count = min(len(neutral_coords), np.random.randint(1, 6))
+                    chosen_spots = [neutral_coords[i] for i in np.random.choice(len(neutral_coords), conquest_count, replace=False)]
+                    
+                    temp_arr = np.array(st.session_state.grid_map)
+                    for r, c in chosen_spots: temp_arr[r, c] = current_player
+                    st.session_state.grid_map = temp_arr.tolist()
+                    
+                    player_stats["civ_factories"] += conquest_count
+                    player_stats["stockpile"]["步槍"] += conquest_count * 500
+                    st.session_state.battle_log.insert(0, f"⚡ 拓荒：【{current_user_name}({current_player})】擴張吞併了 {conquest_count} 格中立區，工廠產線規模擴大！")
+                    
+                    if np.random.rand() < 0.35:
+                        other_countries = [c for c in COUNTRIES if c != current_player]
+                        hit_country = np.random.choice(other_countries)
+                        clash_gain = np.random.randint(10, 21)
+                        player_stats["animosity"][hit_country] = min(100, player_stats["animosity"][hit_country] + clash_gain)
+                        st.session_state.player_data[hit_country]["animosity"][current_player] = min(100, st.session_state.player_data[hit_country]["animosity"][current_player] + clash_gain)
+                        st.session_state.battle_log.insert(0, f"💥 邊境擦槍走火！我軍在開拓邊疆時與【{hit_country}】守軍發生零星摩擦，雙方仇恨飆升 {clash_gain} 點！")
+                    st.rerun()
+                else: 
+                    st.error("❌ 全地圖中立荒漠已被瓜分完畢！請改用選項一精準突擊對手領土！")
+            else: 
+                st.error("❌ 政治點數不足 40 PP，無法發動集團軍大規模盲擴張！")
