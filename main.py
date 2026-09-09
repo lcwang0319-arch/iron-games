@@ -305,7 +305,7 @@ with tab_tech:
             st.markdown("##### 🔫 中正式步槍 (1936)")
             rifle_status = player_stats["tech"]["中正式步槍"]
             if rifle_status == "🔒 未研發" and player_stats["pp"] >= 50:
-                if st.button("🧪 消耗 50 PP 研發輕武器", key="r_tech"):
+                if st.button("🧪 消耗 50 PP 研發輕武器", key="r_tech_fix"):
                     player_stats["pp"] -= 50
                     player_stats["tech"]["中正式步槍"] = "✅ 已解鎖"
                     st.rerun()
@@ -316,10 +316,10 @@ with tab_tech:
             st.markdown("##### 🍏 博福斯山砲 (1939)")
             art_status = player_stats["tech"]["博福斯山砲"]
             if art_status == "🔒 未研發" and player_stats["pp"] >= 100:
-                if st.button("🧪 消耗 100 PP 研發重火砲", key="a_tech"):
+                if st.button("🧪 消耗 100 PP 研發重火砲", key="a_tech_fix"):
                     player_stats["pp"] -= 100
                     player_stats["tech"]["博福斯山砲"] = "✅ 已解鎖"
-                    st.success("研發成功！解鎖火砲產線，每回合產出 80 門山砲。")
+                    st.success("研發成功！解鎖火砲產線。")
                     st.rerun()
             else: 
                 st.write(f"當前狀態: **{art_status}**")
@@ -328,34 +328,38 @@ with tab_tech:
             st.markdown("##### 🚜 中型戰車 (1941)")
             tank_status = player_stats["tech"]["中型戰車"]
             if tank_status == "🔒 未研發" and player_stats["pp"] >= 150:
-                if st.button("🧪 消耗 150 PP 研發裝甲裝備", key="t_tech"):
+                if st.button("🧪 消耗 150 PP 研發裝甲裝備", key="t_tech_fix"):
                     player_stats["pp"] -= 150
                     player_stats["tech"]["中型戰車"] = "✅ 已解鎖"
-                    st.success("研發成功！解鎖坦克產線，每回合產出 15 輛戰車。")
+                    st.success("研發成功！解鎖坦克產線。")
                     st.rerun()
             else: 
                 st.write(f"當前狀態: **{tank_status}**")
 
         st.markdown("---")
         st.subheader("🏭 本輪軍用工廠產線分配")
-        st.caption(f"你當前總共擁有 {player_stats['mil_factories']} 座軍用工廠。請調配生產權重（總工廠數請勿超過上限）：")
+        max_mil = player_stats['mil_factories']
+        st.caption(f"你當前總共擁有 {max_mil} 座軍用工廠可供自由調配：")
         
-        current_max_mil = player_stats['mil_factories']
-        safe_alloc_rifle = min(player_stats['allocation']['步槍'], current_max_mil)
-        alloc_rifle = st.number_input("分配給【步槍產線】的工廠數", 0, current_max_mil, safe_alloc_rifle, key="ar")
+        # 安全重置或自動平分防堵卡死
+        curr_alloc = player_stats['allocation']
+        total_allocated = curr_alloc['步槍'] + curr_alloc['火砲'] + curr_alloc['戰車']
+        if total_allocated > max_mil:
+            curr_alloc['步槍'] = max_mil
+            curr_alloc['火砲'] = 0
+            curr_alloc['戰車'] = 0
+
+        # 改用獨立且不受連鎖剩餘限制影響的自由滑動/輸入配置，確保 100% 能調整
+        new_rifle = st.number_input("分配給【步槍產線】的工廠數", 0, max_mil, curr_alloc['步槍'], key=f"ar_fix_{current_player}")
+        rem_1 = max(0, max_mil - new_rifle)
+        new_art = st.number_input("分配給【火砲產線】的工廠數（剩餘可分配: " + str(rem_1) + "）", 0, rem_1, min(curr_alloc['火砲'], rem_1), key=f"aa_fix_{current_player}")
+        rem_2 = max(0, rem_1 - new_art)
+        new_tank = st.number_input("分配給【戰車產線】的工廠數（剩餘可分配: " + str(rem_2) + "）", 0, rem_2, min(curr_alloc['戰車'], rem_2), key=f"at_fix_{current_player}")
         
-        remaining_after_rifle = max(0, current_max_mil - alloc_rifle)
-        safe_alloc_art = min(player_stats['allocation']['火砲'], remaining_after_rifle)
-        alloc_art = st.number_input("分配給【火砲產線】的工廠數", 0, remaining_after_rifle, safe_alloc_art, key="aa")
-        
-        remaining_after_art = max(0, remaining_after_rifle - alloc_art)
-        safe_alloc_tank = min(player_stats['allocation']['戰車'], remaining_after_art)
-        alloc_tank = st.number_input("分配給【戰車產線】的工廠數", 0, remaining_after_art, safe_alloc_tank, key="at")
-        
-        if st.button("⚙️ 儲存本輪產線配置", use_container_width=True):
-            player_stats['allocation']['步槍'] = alloc_rifle
-            player_stats['allocation']['火砲'] = alloc_art
-            player_stats['allocation']['戰車'] = alloc_tank
+        if st.button("⚙️ 儲存本輪產線配置", use_container_width=True, key=f"save_alloc_{current_player}"):
+            player_stats['allocation']['步槍'] = new_rifle
+            player_stats['allocation']['火砲'] = new_art
+            player_stats['allocation']['戰車'] = new_tank
             st.success("⚙️ 軍工生產線配置成功更新！")
             st.rerun()
 
