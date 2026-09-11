@@ -79,7 +79,7 @@ if not st.session_state.game_started:
         st.rerun()
     st.stop()
 
-# 4. 遊戲核心數據防禦性初始化
+# 4. 🚀 鐵壁級安全防禦：將所有變數初始化100%提到最前方，防止 AI 回合提早中斷噴錯 🚀
 if "turn_index" not in st.session_state:
     st.session_state.turn_index = 0  
 if "total_turns" not in st.session_state:
@@ -88,6 +88,8 @@ if "soviet_collapsed" not in st.session_state:
     st.session_state.soviet_collapsed = False  
 if "dead_players" not in st.session_state:
     st.session_state.dead_players = []  
+if "battle_log" not in st.session_state:
+    st.session_state.battle_log = ["📋 歷史日誌：20×20 大棋盤啟動！各方強權已進入臨戰狀態。"]
 
 # 初始化地圖
 if "grid_map" not in st.session_state:
@@ -123,7 +125,7 @@ if "player_data" not in st.session_state:
             animosity["中華蘇維埃反國抗日革命軍"] = 50  
         if c == "大日本帝國":
             animosity["中華民國"] = 50
-            animosity["中華蘇維埃反國抗日革命軍"] = 100  # 🌟 日本對抗日革命軍初始仇恨 100！
+            animosity["中華蘇維埃反國抗日革命軍"] = 100  
             
         p_data[c] = {
             "pp": 150,
@@ -131,14 +133,14 @@ if "player_data" not in st.session_state:
             "base_civ": 7, 
             "civ_factories": 8 if c != "蘇維埃社會主義共和國聯邦（蘇聯）" else 11,
             "mil_factories": 5,
-            "tech": {"中文武器自行研發" if "中正式步槍" not in ["中正式步槍"] else "中正式步槍": t_ok, "中正式步槍": t_ok, "博福斯山砲": t_ok, "中型戰車": "🔒 未研發"},
+            "tech": {"中正式步槍": t_ok, "博福斯山砲": t_ok, "中型戰車": "🔒 未研發"},
             "allocation": {"步槍": 3, "火砲": 2, "戰車": 0},
             "stockpile": {"步槍": stock_b, "火砲": stock_a, "戰車": 0},
             "animosity": animosity  
         }
     p_data["中華蘇維埃反國抗日革命軍"] = {
         "stockpile": {"步槍": 8000, "火砲": 100},
-        "animosity": {"中華民國": 50, "大日本帝國": 100}  # 🌟 抗日革命軍對日本初始仇恨 100！
+        "animosity": {"中華民國": 50, "大日本帝國": 100}  
     }
     st.session_state.player_data = p_data
 
@@ -385,7 +387,7 @@ with tab_tech:
 with tab_action:
     st.header(f"🎯 【{current_user_name}】的最高統帥部與外交戰令")
     if current_player in st.session_state.dead_players:
-        st.error("❌ 你的國家已被滅國，無法下達任何國家級軍令與外交法案！")
+        st.error("❌ 你的國家已被滅國，無法下達 any 國家級軍令與外交法案！")
     else:
         ac1, ac2 = st.columns(2)
         with ac1:
@@ -411,6 +413,8 @@ with tab_action:
                 elif current_owner in ["法西斯蘇聯", "民主蘇聯", "君主蘇聯"]: st.error("🔒 軍閥限制：該方格目前因戰略混亂無法越界進攻！")
                 elif current_owner == "中立荒漠":
                     temp_arr = np.array(st.session_state.grid_map)
+                    temp_arr[r_idx, c_idx] = current_player
+                    st.session_state.grid_map = temp_arr.tolist()
                     temp_arr[r_idx, c_idx] = current_player
                     st.session_state.grid_map = temp_arr.tolist()
                     st.session_state.battle_log.insert(0, f"🚩 精準擴張：【{current_user_name}({current_player})】開拓佔領了中立方格 [{target_row}, {target_col}]！")
@@ -506,3 +510,5 @@ with tab_action:
                         st.rerun()
                     else: 
                         st.error("❌ 全地圖中立荒漠已被瓜分完畢！請改用選項一精準突擊對手領土！")
+                else:
+                    st.error("❌ 政治點數不足 40 PP！")
