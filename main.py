@@ -93,25 +93,22 @@ if "dead_players" not in st.session_state:
 if "battle_log" not in st.session_state:
     st.session_state.battle_log = ["📋 歷史日誌：100×100 海陸大地圖啟動！萬格大洋戰場正式解鎖。"]
 
-# 初始化 100x100 大地圖（加入史詩海陸物理區隔）
+# 初始化 100x100 大地圖
 if "grid_map" not in st.session_state:
     base_grid = [["中立荒漠" for _ in range(MAP_SIZE)] for _ in range(MAP_SIZE)]
     for r_idx in range(MAP_SIZE):
         for c_idx in range(MAP_SIZE):
-            # 建立巨型十字中央海洋防線
             if (35 <= r_idx <= 65) or (35 <= c_idx <= 55 and r_idx > 30):
                 if not (r_idx < 15 and c_idx >= 80) and not (r_idx >= 80 and c_idx >= 80) and not (r_idx >= 80 and c_idx < 20):
                     base_grid[r_idx][c_idx] = "太平洋/大西洋海域"
             
-            # 分配中、蘇、德歷史最大時期領土，日本上古一格海島
             if r_idx < 15 and c_idx < 15:
                 base_grid[r_idx][c_idx] = "中華民國"
             elif r_idx == 0 and c_idx == 15:
-                base_grid[row_idx][col_idx] = "中華蘇維埃反國抗日革命軍" if 'row_idx' in locals() else "中華蘇維埃反國抗日革命軍"
+                base_grid[r_idx][c_idx] = "中華蘇維埃反國抗日革命軍"
             elif r_idx < 15 and c_idx >= (MAP_SIZE - 15):
                 base_grid[r_idx][c_idx] = "德意志第三帝國（納粹德國）"
             elif r_idx == (MAP_SIZE - 1) and c_idx == 0:
-                # 🌟 上古時期最小領土：日本開局孤懸海外，精準僅佔 1 格！
                 base_grid[r_idx][c_idx] = "大日本帝國"
             elif r_idx >= (MAP_SIZE - 15) and c_idx >= (MAP_SIZE - 15):
                 base_grid[r_idx][c_idx] = "蘇維埃社會主義共和國聯邦（蘇聯）"
@@ -226,6 +223,8 @@ with st.sidebar:
             if player_stats["tech"]["博福斯山砲"] == "✅ 已解鎖": 
                 player_stats["stockpile"]["火砲"] = player_stats["stockpile"].get("火砲", 0) + player_stats["allocation"]["火砲"] * 80
             if player_stats["tech"]["海軍艦艇"] == "✅ 已解鎖":
+                player_stats["stockpile"]["火砲"] = player_stats["stockpile"].get("火砲", 0) + player_stats["allocation"]["火砲"] * 80
+            if player_stats["tech"]["海軍艦艇"] == "✅ 已解鎖":
                 player_stats["stockpile"]["海軍舰艇"] = player_stats["stockpile"].get("海軍舰艇", 0) + player_stats["allocation"]["造船"] * 2
             player_stats["pp"] += 60
         
@@ -270,6 +269,8 @@ with st.sidebar:
         for enemy, val in player_stats["animosity"].items():
             status = "⚔️ 可爆發海戰" if val >= 100 else "🕊️ 和平中"
             st.write(f"對【{enemy}】：`{val} / 100` ➔ **{status}**")
+    else:
+        st.write("🏳️ 國家已不存在，外交仇恨矩陣關閉。")
 
     st.markdown("---")
     st.subheader("📜 歐亞前線戰報")
@@ -306,10 +307,10 @@ with tab_map:
     
     st.subheader("📊 全球版圖控制統計")
     mc1, mc2, mc3, mc4 = st.columns(4)
-    mc1.metric("🔵 中華民國", f"{counts_current['中華民國']} 格")
-    mc2.metric("⚫ 德意志第三帝國", f"{counts_current['德意志第三帝國（納粹德國）']} 格")
-    mc3.metric("💗 大日本帝國", f"{counts_current['大日本帝國']} 格")
-    mc4.metric("🔴 蘇維埃聯邦", f"{counts_current['蘇維埃社會主義共和國聯邦（蘇聯）']} 格")
+    mc1.metric("🔵 中華民國" + (" (已亡國)" if "中華民國" in st.session_state.dead_players else ""), f"{counts_current['中華民國']} 格")
+    mc2.metric("⚫ 德意志第三帝國" + (" (已亡國)" if "德意志第三帝國（納粹德國）" in st.session_state.dead_players else ""), f"{counts_current['德意志第三帝國（納粹德國）']} 格")
+    mc3.metric("💗 大日本帝國" + (" (已亡國)" if "大日本帝國" in st.session_state.dead_players else ""), f"{counts_current['大日本帝國']} 格")
+    mc4.metric("🔴 蘇維埃聯邦" + (" (已亡國)" if "蘇維埃社會主義共和國聯邦（蘇聯）" in st.session_state.dead_players else ""), f"{counts_current['蘇維埃社會主義共和國聯邦（蘇聯）']} 格")
     
     st.markdown("---")
     sc1, sc2 = st.columns(2)
@@ -323,12 +324,12 @@ with tab_tech:
         st.error("❌ 你的國家已被滅國，科研與工廠產線全面停擺！")
     else:
         tc1, tc2, tc3 = st.columns(3)
-        with tc1: st.write(f"步槍科技: **{player_stats['tech'].get('中正式步槍', '🔒 未研發')}**")
+        with tc1: st.write(f"步槍科技: **{player_stats['tech'].get('慢速步槍' if '中正式步槍' not in player_stats['tech'] else '中正式步槍', '🔒 未研發')}**")
         with tc2: st.write(f"火砲科技: **{player_stats['tech'].get('博福斯山砲', '🔒 未研發')}**")
         with tc3: 
             st.write(f"海軍研發: **{player_stats['tech'].get('海軍艦艇', '🔒 未研發')}**")
             if player_stats["tech"].get("海軍艦艇", "🔒 未研發") == "🔒 未研發" and player_stats["pp"] >= 100:
-                if st.button("🧪 消耗 100 PP 解鎖造船船塢"):
+                if st.button("🧪 消耗 100 PP 解鎖造船船塢", key=f"unlock_dock_{current_player}"):
                     player_stats["pp"] -= 100
                     player_stats["tech"]["海軍艦艇"] = "✅ 已解鎖"
                     st.rerun()
@@ -407,10 +408,62 @@ with tab_action:
                             attack_power = navy_power + 30 + np.random.randint(-15, 15)
                             defense_power = enemy_navy_power + 50 + np.random.randint(-10, 10)
                             
+                            # ⚓ 扣除雙方戰鬥損耗武器
                             player_stats["stockpile"]["海軍舰艇"] = max(0, player_stats["stockpile"].get("海軍舰艇", 0) - 2)
-                            if "海軍舰艇" in enemy_stats["stockpile"]:
+                            if "stockpile" in enemy_stats and "海軍舰艇" in enemy_stats["stockpile"]:
                                 enemy_stats["stockpile"]["海軍舰艇"] = max(0, enemy_stats["stockpile"]["海軍舰艇"] - 1)
                             
-player_stats["stockpile"]["海軍舰艇"] = max(0, player_stats["stockpile"].get("海軍舰艇", 0) - 2)
-                            if "海軍舰艇" in enemy_stats["stockpile"]:
-                                enemy_stats["stockpile"]["海軍舰艇"] = max(0, enemy_stats["stockpile"]["海軍舰艇"] - 1)後的也給我
+                            # 判定跨海大捷登陸或被擊退
+                            if attack_power > defense_power:
+                                temp_arr = np.array(st.session_state.grid_map)
+                                temp_arr[r_idx, c_idx] = current_player
+                                st.session_state.grid_map = temp_arr.tolist()
+                                st.session_state.battle_log.insert(0, f"💥 遠洋大捷！【{current_user_name}】指派海軍經【{navy_route}】重創敵軍，強行登陸奪取方格 [{target_row}, {target_col}]！")
+                                
+                                # 完全吞併與滅國判定鎖
+                                if current_owner in COUNTRIES:
+                                    flat_map = [grid_cell for row_list in st.session_state.grid_map for grid_cell in row_list]
+                                    if flat_map.count(current_owner) == 0:
+                                        st.session_state.dead_players.append(current_owner)
+                                        st.session_state.battle_log.insert(0, f"💀💀 全球震驚：【{enemy_name}({current_owner})】最後一格陸地淪陷，國家宣告亡國出局！！")
+                            else:
+                                st.session_state.battle_log.insert(0, f"🛡️ 海戰失利：我軍在【{navy_route}】遭遇強力阻擊，登陸部隊被擊退！")
+                            st.session_state[attack_flag_key] = True
+                            st.rerun()
+
+        with ac2:
+            st.subheader("⚡ 選項二：海軍陸戰隊島嶼拓荒與「外交製造爭端」")
+            provoke_options = [c for c in COUNTRIES if c != current_player and c not in st.session_state.dead_players]
+            if current_player == "中華民國" and "中華蘇維埃反國抗日革命軍" not in st.session_state.dead_players: 
+                provoke_options.append("中華蘇維埃反國抗日革命軍")
+            provoke_target = st.selectbox("挑釁目標：", provoke_options, key=f"provoke_sel_{current_player}")
+            
+            if st.button(f"🔥 製造爭端，挑釁【{provoke_target}】", use_container_width=True, key=f"provoke_btn_{current_player}"):
+                if player_stats["pp"] >= 30:
+                    player_stats["pp"] -= 30
+                    gain = np.random.randint(15, 26)
+                    player_stats["animosity"][provoke_target] = min(100, player_stats["animosity"][provoke_target] + gain)
+                    st.session_state.battle_log.insert(0, f"📡 外交尋釁：【{current_player}】故意挑釁【{provoke_target}】，雙向仇恨暴增 {gain}！")
+                    st.rerun()
+                else: 
+                    st.error("❌ 政治點數不足！")
+                    
+            st.markdown("---")
+            if st.button("🚀 發動海軍陸戰隊大範圍跨島閃擊拓荒！", use_container_width=True, key=f"amphibious_btn_{current_player}"):
+                if player_stats["pp"] >= 40:
+                    if player_stats["stockpile"].get("海軍舰艇", 0) < 3:
+                        st.error("❌ 拓荒失敗：海軍陸戰隊大範圍搶灘登陸，需要至少 3 艘海軍艦艇掩護！")
+                    else:
+                        player_stats["pp"] -= 40
+                        player_stats["stockpile"]["海軍舰艇"] = max(0, player_stats["stockpile"].get("海軍舰艇", 0) - 2)
+                        neutral_coords = [(r, c) for r in range(MAP_SIZE) for c in range(MAP_SIZE) if st.session_state.grid_map[r][c] == "中立荒漠"]
+                        if neutral_coords:
+                            conquest_count = min(len(neutral_coords), np.random.randint(6, 19))
+                            chosen_spots = [neutral_coords[i] for i in np.random.choice(len(neutral_coords), conquest_count, replace=False)]
+                            temp_arr = np.array(st.session_state.grid_map)
+                            for r, c in chosen_spots: 
+                                if 0 <= r < MAP_SIZE and 0 <= c < MAP_SIZE:
+                                    temp_arr[r, c] = current_player
+                            st.session_state.grid_map = temp_arr.tolist()
+                            st.session_state.battle_log.insert(0, f"⚡ 萬格海拓：【{current_player}】由海軍陸戰隊護航，一口氣瘋狂吞併開拓了 {conquest_count} 格中立陸地/島嶼！")
+                            st.rerun()
